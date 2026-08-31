@@ -2,7 +2,9 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  profileImage: string; // e.g. "/Image-assets/Profile-assets/p1.png"
   startDate: string; // ISO format or YYYY-MM-DD
+  profileComplete: boolean;
 }
 
 export type TransactionType = "expense" | "income_salary" | "income_topup" | "transfer";

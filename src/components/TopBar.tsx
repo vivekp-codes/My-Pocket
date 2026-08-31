@@ -26,9 +26,23 @@ export default function TopBar() {
           }
         }}
         title="Click to logout"
-        className="w-11 h-11 rounded-[14px] bg-surface border border-stroke flex items-center justify-center font-display font-bold text-sm text-text hover:border-coral/40 transition-colors"
+        className="flex items-center gap-3"
       >
-        {initials}
+        <div className="w-11 h-11 rounded-[14px] bg-surface border border-stroke flex items-center justify-center font-display font-bold text-sm text-text hover:border-coral/40 transition-colors overflow-hidden">
+          {user?.profileImage ? (
+            <img src={user.profileImage} alt="Profile" className="w-full h-full object-cover" />
+          ) : (
+            initials
+          )}
+        </div>
+        <div className="text-left hidden sm:block">
+          <p className="text-sm font-bold text-text leading-tight">
+            {user?.name || "User"}
+          </p>
+          <p className="text-[10px] text-textDim/50 leading-tight">
+            {user?.email || ""}
+          </p>
+        </div>
       </button>
       
       <button

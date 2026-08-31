@@ -35,7 +35,9 @@ function AppContent() {
     );
   }
 
-  return user ? <Home /> : <AuthScreen />;
+  // No user → auth screen. User exists but profile incomplete → also auth screen (avatar step)
+  const needsProfile = user && !user.profileComplete;
+  return user && !needsProfile ? <Home /> : <AuthScreen />;
 }
 
 function App() {

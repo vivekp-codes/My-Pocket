@@ -14,7 +14,6 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<string>("home");
 
   const handleSendSuccess = async (amount: number, _recipient: string) => {
-    // Transfer from liquid balance (simulates sending money)
     await transferMoney(amount, "liquid", `Transfer to ${_recipient}`);
   };
 
@@ -23,35 +22,11 @@ export default function Home() {
 
   return (
     <div
-      className="min-h-screen w-full text-text relative pb-[120px] md:pb-12"
+      className="h-full w-full text-text relative"
       style={{ background: "linear-gradient(180deg, #121a15 0%, #0d130f 30%)" }}
     >
-      {/* Desktop Layout: 3 Columns Grid */}
-      <div className="hidden md:grid grid-cols-3 gap-8 max-w-7xl mx-auto pt-8 px-6">
-        {/* Column 1: Account Overview */}
-        <div className="bg-[#090d0b]/80 border border-white/[0.02] rounded-[32px] py-6 shadow-2xl">
-          <TopBar />
-          <div className="font-display font-bold text-[34px] leading-none tracking-tight px-5 pb-5 text-text">
-            Overview
-          </div>
-          <WalletCard balance={totalBalance} />
-          <StatPills />
-          <TransactionList transactions={transactions} />
-        </div>
-
-        {/* Column 2: Send Money */}
-        <div className="bg-[#090d0b]/80 border border-white/[0.02] rounded-[32px] py-6 shadow-2xl">
-          <SendMoney onSendSuccess={handleSendSuccess} />
-        </div>
-
-        {/* Column 3: Statistics */}
-        <div className="bg-[#090d0b]/80 border border-white/[0.02] rounded-[32px] py-6 shadow-2xl">
-          <StatisticsCard />
-        </div>
-      </div>
-
-      {/* Mobile Layout: Single Tab Column */}
-      <div className="block md:hidden max-w-xl mx-auto w-full pt-6">
+      {/* Scrollable content area — padded so last item doesn't hide behind nav */}
+      <div className="h-full overflow-y-auto overflow-x-hidden max-w-xl mx-auto w-full pt-6 pb-[100px]">
         <AnimatePresence mode="wait">
           {activeTab === "home" && (
             <motion.div
@@ -125,8 +100,8 @@ export default function Home() {
         </AnimatePresence>
       </div>
 
-      {/* Floating Bottom Nav for Mobile */}
-      <div className="fixed bottom-[22px] left-1/2 -translate-x-1/2 w-[calc(100%-44px)] max-w-sm z-40 md:hidden">
+      {/* Bottom Nav — absolute fixed at screen bottom, always visible */}
+      <div className="absolute bottom-0 left-0 right-0 w-full px-3 pb-3 pt-1 z-40">
         <BottomNav activeTab={activeTab} onChangeTab={setActiveTab} />
       </div>
     </div>

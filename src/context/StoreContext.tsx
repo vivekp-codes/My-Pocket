@@ -5,7 +5,26 @@ import {
   useEffect,
   type ReactNode,
 } from "react";
-import { supabase } from "../lib/supabase";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut,
+  type User as FirebaseUser,
+} from "firebase/auth";
+import {
+  doc,
+  setDoc,
+  getDoc,
+  getDocs,
+  collection,
+  query,
+  where,
+  orderBy,
+  serverTimestamp,
+  updateDoc,
+} from "firebase/firestore";
+import { auth, db } from "../lib/firebase";
 import type {
   User,
   Balance,
@@ -21,6 +40,8 @@ interface StoreContextType {
   transactions: Transaction[];
   theme: "dark" | "light";
   loading: boolean;
+  showProfile: boolean;
+  setShowProfile: (v: boolean) => void;
   signUp: (
     email: string,
     password: string
@@ -33,6 +54,7 @@ interface StoreContextType {
     username: string,
     profileImage?: string
   ) => Promise<{ success: boolean; error?: string }>;
+  updateUsername: (newName: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   addExpense: (
     amount: number,
@@ -67,24 +89,6 @@ const getDayLabel = (startDateStr: string, currentDateStr: string): number => {
   return Math.max(1, diffDays + 1);
 };
 
-const rowToTransaction = (row: any): Transaction => ({
-  id: row.id,
-  userId: row.user_id,
-  type: row.type,
-  bucket: row.bucket,
-  category: row.category,
-  amount: Number(row.amount),
-  date: row.date,
-  dayLabel: row.day_label,
-  note: row.note,
-  recipient: row.recipient,
-  name: row.name,
-  icon: row.icon,
-  iconBg: row.icon_bg,
-  meta: row.meta,
-  currency: row.currency,
-});
-
 // ── Provider ───────────────────────────────────────────────────────
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -95,6 +99,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const saved = localStorage.getItem("expense_tracker_theme");
     return (saved as "dark" | "light") || "dark";
   });
+  const [showProfile, setShowProfile] = useState(false);
 
   // ── Theme sync ─────────────────────────────────────────────────
   useEffect(() => {
@@ -106,55 +111,72 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [theme]);
 
-  // ── Load user data from Supabase ──────────────────────────────
-  const loadUserData = async (supabaseUserId: string) => {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("full_name, email, start_date, profile_image")
-      .eq("id", supabaseUserId)
-      .single();
+  // ── Load user data from Firestore ─────────────────────────────
+  const loadUserData = async (firebaseUser: FirebaseUser) => {
+    const uid = firebaseUser.uid;
 
-    const profileComplete = !!(profile && profile.full_name);
+    // Profile
+    const profileDoc = await getDoc(doc(db, "profiles", uid));
+    const profileData = profileDoc.exists() ? profileDoc.data() : null;
+    const profileComplete = !!(profileData && profileData.full_name);
 
     const userObj: User = {
-      id: supabaseUserId,
-      name: profile?.full_name ?? "",
-      email: profile?.email ?? "",
-      profileImage: profile?.profile_image ?? "/Image-assets/Profile-assets/p1.png",
-      startDate: profile?.start_date ?? new Date().toISOString().split("T")[0],
+      id: uid,
+      name: profileData?.full_name ?? "",
+      email: profileData?.email ?? firebaseUser.email ?? "",
+      profileImage: profileData?.profile_image ?? "/Image-assets/Profile-assets/p1.png",
+      startDate: profileData?.start_date ?? new Date().toISOString().split("T")[0],
       profileComplete,
     };
 
-    const { data: balRow } = await supabase
-      .from("balances")
-      .select("liquid_amount, account_amount")
-      .eq("user_id", supabaseUserId)
-      .single();
+    // Balance
+    const balanceDoc = await getDoc(doc(db, "balances", uid));
+    const balanceData = balanceDoc.exists() ? balanceDoc.data() : null;
 
     const balanceObj: Balance = {
-      userId: supabaseUserId,
-      liquidAmount: Number(balRow?.liquid_amount ?? 5850.40),
-      accountAmount: Number(balRow?.account_amount ?? 225710.00),
+      userId: uid,
+      liquidAmount: Number(balanceData?.liquid_amount ?? 5850.40),
+      accountAmount: Number(balanceData?.account_amount ?? 225710.00),
     };
 
-    const { data: txRows } = await supabase
-      .from("transactions")
-      .select("*")
-      .eq("user_id", supabaseUserId)
-      .order("date", { ascending: false });
+    // Transactions
+    const txQuery = query(
+      collection(db, "transactions"),
+      where("user_id", "==", uid),
+      orderBy("date", "desc")
+    );
+    const txSnapshot = await getDocs(txQuery);
+    const txList: Transaction[] = txSnapshot.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        userId: data.user_id,
+        type: data.type,
+        bucket: data.bucket,
+        category: data.category,
+        amount: Number(data.amount),
+        date: data.date,
+        dayLabel: data.day_label,
+        note: data.note,
+        recipient: data.recipient,
+        name: data.name,
+        icon: data.icon,
+        iconBg: data.icon_bg,
+        meta: data.meta,
+        currency: data.currency,
+      };
+    });
 
     setUser(userObj);
     setBalances(balanceObj);
-    setTransactions(txRows ? txRows.map(rowToTransaction) : []);
+    setTransactions(txList);
   };
 
   // ── Auth state listener ───────────────────────────────────────
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        await loadUserData(session.user.id);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        await loadUserData(firebaseUser);
       } else {
         setUser(null);
         setBalances(null);
@@ -163,190 +185,224 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        await loadUserData(session.user.id);
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    return () => unsubscribe();
   }, []);
 
-  // ── Auth: Sign Up with email + password ───────────────────────
+  // ── Auth: Sign Up ─────────────────────────────────────────────
   const signUp = async (
     email: string,
     password: string
   ): Promise<{ success: boolean; error?: string; isNewUser?: boolean }> => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { emailRedirectTo: window.location.origin },
-    });
+    try {
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const fbUser = userCredential.user;
 
-    if (error) {
-      return { success: false, error: error.message };
-    }
+      // Check if profile already exists
+      const profileDoc = await getDoc(doc(db, "profiles", fbUser.uid));
+      const isNewUser = !profileDoc.exists();
 
-    if (data.user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("id", data.user.id)
-        .single();
-
-      const isNewUser = !profile;
       return { success: true, isNewUser };
+    } catch (err: any) {
+      let message = "Signup failed";
+      if (err.code === "auth/email-already-in-use") {
+        message = "An account with this email already exists";
+      } else if (err.code === "auth/weak-password") {
+        message = "Password must be at least 6 characters";
+      } else if (err.code === "auth/invalid-email") {
+        message = "Invalid email address";
+      }
+      return { success: false, error: message };
     }
-
-    return { success: false, error: "Signup failed" };
   };
 
-  // ── Auth: Login with email + password ──────────────────────────
+  // ── Auth: Login ───────────────────────────────────────────────
   const login = async (
     email: string,
     password: string
   ): Promise<{ success: boolean; error?: string; isNewUser?: boolean }> => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const fbUser = userCredential.user;
 
-    if (error) {
-      return { success: false, error: error.message };
-    }
+      const profileDoc = await getDoc(doc(db, "profiles", fbUser.uid));
+      const isNewUser = !profileDoc.exists();
 
-    if (data.user) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("id", data.user.id)
-        .single();
-
-      const isNewUser = !profile;
       return { success: true, isNewUser };
+    } catch (err: any) {
+      let message = "Login failed";
+      if (err.code === "auth/user-not-found") {
+        message = "No account found with this email";
+      } else if (err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") {
+        message = "Invalid email or password";
+      } else if (err.code === "auth/too-many-requests") {
+        message = "Too many attempts. Please try again later";
+      }
+      return { success: false, error: message };
     }
-
-    return { success: false, error: "Login failed" };
   };
 
-  // ── Auth: Create profile (new users) ──────────────────────────
+  // ── Auth: Create Profile ──────────────────────────────────────
   const createProfile = async (
     username: string,
     profileImage?: string
   ): Promise<{ success: boolean; error?: string }> => {
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser();
-
-    if (!authUser) {
-      return { success: false, error: "No active session" };
+    const fbUser = auth.currentUser;
+    if (!fbUser) {
+      return { success: false, error: "No active session — please log in again" };
     }
 
-    const uid = authUser.id;
-    const email = authUser.email ?? "";
+    const uid = fbUser.uid;
+    const email = fbUser.email ?? "";
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 5);
     const startDateStr = startDate.toISOString().split("T")[0];
 
-    const { error: profileError } = await supabase.from("profiles").insert({
-      id: uid,
-      full_name: username,
-      email,
-      profile_image: profileImage ?? "/Image-assets/Profile-assets/p1.png",
-      start_date: startDateStr,
-    });
+    try {
+      // Save profile
+      await setDoc(doc(db, "profiles", uid), {
+        full_name: username,
+        email,
+        profile_image: profileImage ?? "/Image-assets/Profile-assets/p1.png",
+        start_date: startDateStr,
+        created_at: serverTimestamp(),
+      });
 
-    if (profileError) {
-      return { success: false, error: profileError.message };
+      // Save balance
+      await setDoc(doc(db, "balances", uid), {
+        liquid_amount: 5850.40,
+        account_amount: 225710.00,
+        updated_at: serverTimestamp(),
+      });
+
+      // Create sample transactions
+      const day2 = new Date(startDate);
+      day2.setDate(day2.getDate() + 1);
+      const day3 = new Date(startDate);
+      day3.setDate(day3.getDate() + 2);
+      const day4 = new Date(startDate);
+      day4.setDate(day4.getDate() + 3);
+
+      const sampleTx = [
+        {
+          user_id: uid,
+          type: "income_salary",
+          bucket: "account",
+          amount: 225710.00,
+          date: startDateStr,
+          day_label: 1,
+          name: "Salary Credit",
+          icon: "💰",
+          icon_bg: "#153a24",
+          note: "Initial Month Salary",
+          currency: "USD",
+          created_at: serverTimestamp(),
+        },
+        {
+          user_id: uid,
+          type: "income_topup",
+          bucket: "liquid",
+          amount: 8000.00,
+          date: startDateStr,
+          day_label: 1,
+          name: "Liquid Cash Setup",
+          icon: "💵",
+          icon_bg: "#1c2a20",
+          note: "ATM Withdrawal",
+          currency: "USD",
+          created_at: serverTimestamp(),
+        },
+        {
+          user_id: uid,
+          type: "expense",
+          bucket: "liquid",
+          category: "food",
+          amount: 340.00,
+          date: day2.toISOString().split("T")[0],
+          day_label: 2,
+          name: "Swiggy Order",
+          icon: "🍔",
+          icon_bg: "#1c2a20",
+          note: "Burger lunch",
+          currency: "USD",
+          created_at: serverTimestamp(),
+        },
+        {
+          user_id: uid,
+          type: "expense",
+          bucket: "liquid",
+          category: "entertainment",
+          amount: 500.00,
+          date: day3.toISOString().split("T")[0],
+          day_label: 3,
+          name: "Movie Tickets",
+          icon: "🎬",
+          icon_bg: "#1c2a20",
+          note: "Split with Felix",
+          currency: "USD",
+          created_at: serverTimestamp(),
+        },
+        {
+          user_id: uid,
+          type: "expense",
+          bucket: "liquid",
+          category: "shopping",
+          amount: 1309.60,
+          date: day4.toISOString().split("T")[0],
+          day_label: 4,
+          name: "Marc Cucurella Store",
+          icon: "👕",
+          icon_bg: "#1c2a20",
+          note: "Summer Tee",
+          currency: "USD",
+          created_at: serverTimestamp(),
+        },
+      ];
+
+      // Create a sub-collection for transactions under the user
+      for (const tx of sampleTx) {
+        const txRef = doc(collection(db, "transactions"));
+        await setDoc(txRef, tx);
+      }
+
+      // Reload data
+      await loadUserData(fbUser);
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: `Profile save failed: ${err.message}` };
+    }
+  };
+
+  // ── Auth: Update Username ─────────────────────────────────────
+  const updateUsername = async (
+    newName: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    const fbUser = auth.currentUser;
+    if (!fbUser) {
+      return { success: false, error: "No active session" };
     }
 
-    await supabase.from("balances").insert({
-      user_id: uid,
-      liquid_amount: 5850.40,
-      account_amount: 225710.00,
-    });
-
-    const day2 = new Date(startDate);
-    day2.setDate(day2.getDate() + 1);
-    const day3 = new Date(startDate);
-    day3.setDate(day3.getDate() + 2);
-    const day4 = new Date(startDate);
-    day4.setDate(day4.getDate() + 3);
-
-    await supabase.from("transactions").insert([
-      {
-        user_id: uid,
-        type: "income_salary",
-        bucket: "account",
-        amount: 225710.00,
-        date: startDateStr,
-        day_label: 1,
-        name: "Salary Credit",
-        icon: "💰",
-        icon_bg: "#153a24",
-        note: "Initial Month Salary",
-      },
-      {
-        user_id: uid,
-        type: "income_topup",
-        bucket: "liquid",
-        amount: 8000.00,
-        date: startDateStr,
-        day_label: 1,
-        name: "Liquid Cash Setup",
-        icon: "💵",
-        icon_bg: "#1c2a20",
-        note: "ATM Withdrawal",
-      },
-      {
-        user_id: uid,
-        type: "expense",
-        bucket: "liquid",
-        category: "food",
-        amount: 340.00,
-        date: day2.toISOString().split("T")[0],
-        day_label: 2,
-        name: "Swiggy Order",
-        icon: "🍔",
-        icon_bg: "#1c2a20",
-        note: "Burger lunch",
-      },
-      {
-        user_id: uid,
-        type: "expense",
-        bucket: "liquid",
-        category: "entertainment",
-        amount: 500.00,
-        date: day3.toISOString().split("T")[0],
-        day_label: 3,
-        name: "Movie Tickets",
-        icon: "🎬",
-        icon_bg: "#1c2a20",
-        note: "Split with Felix",
-      },
-      {
-        user_id: uid,
-        type: "expense",
-        bucket: "liquid",
-        category: "shopping",
-        amount: 1309.60,
-        date: day4.toISOString().split("T")[0],
-        day_label: 4,
-        name: "Marc Cucurella Store",
-        icon: "👕",
-        icon_bg: "#1c2a20",
-        note: "Summer Tee",
-      },
-    ]);
-
-    await loadUserData(uid);
-    return { success: true };
+    try {
+      await updateDoc(doc(db, "profiles", fbUser.uid), {
+        full_name: newName,
+      });
+      setUser((prev) => (prev ? { ...prev, name: newName } : prev));
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
   };
 
   // ── Auth: Logout ───────────────────────────────────────────────
   const logout = async () => {
-    await supabase.auth.signOut();
+    await signOut(auth);
     setUser(null);
     setBalances(null);
     setTransactions([]);
@@ -363,7 +419,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     const dayLabel = getDayLabel(user.startDate, date);
 
-    const { error: txError } = await supabase.from("transactions").insert({
+    const txData = {
       user_id: user.id,
       type: "expense",
       bucket: "liquid",
@@ -378,24 +434,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         (note ? ` (${note})` : ""),
       icon: getCategoryIcon(category),
       icon_bg: "#1c2a20",
-    });
+      currency: "USD",
+      created_at: serverTimestamp(),
+    };
 
-    if (txError) return;
+    const txRef = doc(collection(db, "transactions"));
+    await setDoc(txRef, txData);
 
     const newLiquid = Math.max(0, balances.liquidAmount - amount);
-    await supabase
-      .from("balances")
-      .update({
+    await setDoc(
+      doc(db, "balances", user.id),
+      {
         liquid_amount: newLiquid,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", user.id);
+        updated_at: serverTimestamp(),
+      },
+      { merge: true }
+    );
 
     setBalances({ ...balances, liquidAmount: newLiquid });
 
     setTransactions((prev) => [
       {
-        id: crypto.randomUUID(),
+        id: txRef.id,
         userId: user.id,
         type: "expense",
         bucket: "liquid",
@@ -427,7 +487,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const todayStr = new Date().toISOString().split("T")[0];
     const dayLabel = getDayLabel(user.startDate, todayStr);
 
-    await supabase.from("transactions").insert({
+    const txData = {
       user_id: user.id,
       type,
       bucket,
@@ -438,25 +498,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       name: type === "income_salary" ? "Salary Received" : "Top-up Wallet",
       icon: type === "income_salary" ? "💰" : "💵",
       icon_bg: type === "income_salary" ? "#153a24" : "#192a20",
-    });
+      currency: "USD",
+      created_at: serverTimestamp(),
+    };
+
+    const txRef = doc(collection(db, "transactions"));
+    await setDoc(txRef, txData);
 
     const updated = { ...balances };
     if (bucket === "liquid") updated.liquidAmount += amount;
     else updated.accountAmount += amount;
 
-    await supabase
-      .from("balances")
-      .update({
+    await setDoc(
+      doc(db, "balances", user.id),
+      {
         liquid_amount: updated.liquidAmount,
         account_amount: updated.accountAmount,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", user.id);
+        updated_at: serverTimestamp(),
+      },
+      { merge: true }
+    );
 
     setBalances(updated);
     setTransactions((prev) => [
       {
-        id: crypto.randomUUID(),
+        id: txRef.id,
         userId: user.id,
         type,
         bucket,
@@ -490,7 +556,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const dayLabel = getDayLabel(user.startDate, todayStr);
     const toBucket = fromBucket === "liquid" ? "account" : "liquid";
 
-    await supabase.from("transactions").insert({
+    const txData = {
       user_id: user.id,
       type: "transfer",
       bucket: toBucket,
@@ -501,7 +567,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       name: `Transfer: ${fromBucket === "liquid" ? "Liquid → Account" : "Account → Liquid"}`,
       icon: "🔄",
       icon_bg: "#122a1f",
-    });
+      currency: "USD",
+      created_at: serverTimestamp(),
+    };
+
+    const txRef = doc(collection(db, "transactions"));
+    await setDoc(txRef, txData);
 
     const updated = { ...balances };
     if (fromBucket === "liquid") {
@@ -512,19 +583,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       updated.liquidAmount += amount;
     }
 
-    await supabase
-      .from("balances")
-      .update({
+    await setDoc(
+      doc(db, "balances", user.id),
+      {
         liquid_amount: updated.liquidAmount,
         account_amount: updated.accountAmount,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("user_id", user.id);
+        updated_at: serverTimestamp(),
+      },
+      { merge: true }
+    );
 
     setBalances(updated);
     setTransactions((prev) => [
       {
-        id: crypto.randomUUID(),
+        id: txRef.id,
         userId: user.id,
         type: "transfer",
         bucket: toBucket,
@@ -555,9 +627,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         transactions,
         theme,
         loading,
+        showProfile,
+        setShowProfile,
         signUp,
         login,
         createProfile,
+        updateUsername,
         logout,
         addExpense,
         addIncome,

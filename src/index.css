@@ -16,11 +16,83 @@ body,
 
 body {
   margin: 0;
-  background: #0d130f;
   font-family: "Inter", sans-serif;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 ::-webkit-scrollbar {
   display: none;
 }
+
+/* ── Dark mode (default) ─────────────────────────────────── */
+body {
+  background: #0d130f;
+  color: #f4f7f3;
+}
+
+/* ── Light mode overrides ────────────────────────────────── */
+html.light body {
+  background: #f0f4f1 !important;
+  color: #1a1f1c !important;
+}
+
+html.light #root {
+  background: #f0f4f1 !important;
+}
+
+/* Main backgrounds */
+html.light .bg-bg { background-color: #f0f4f1 !important; }
+html.light .bg-bg2 { background-color: #e4ebe6 !important; }
+html.light .bg-surface { background-color: #ffffff !important; }
+html.light .bg-cardBg { background-color: #ffffff !important; }
+
+/* Borders */
+html.light .border-stroke { border-color: #d0dbd2 !important; }
+html.light .border-white\/\[0\.04\] { border-color: rgba(26,31,28,0.08) !important; }
+html.light .border-white\/\[0\.06\] { border-color: rgba(26,31,28,0.1) !important; }
+html.light .border-white\/\[0\.08\] { border-color: rgba(26,31,28,0.12) !important; }
+html.light .border-white\/\[0\.1\] { border-color: rgba(26,31,28,0.15) !important; }
+
+/* Text */
+html.light .text-text { color: #1a1f1c !important; }
+html.light .text-textDim { color: #5a6b5e !important; }
+html.light .text-textFaint { color: #8a9a8e !important; }
+html.light .text-white { color: #1a1f1c !important; }
+html.light .text-white\/90 { color: rgba(26,31,28,0.9) !important; }
+html.light .text-white\/80 { color: rgba(26,31,28,0.8) !important; }
+html.light .text-white\/70 { color: rgba(26,31,28,0.7) !important; }
+html.light .text-white\/60 { color: rgba(26,31,28,0.6) !important; }
+html.light .text-white\/50 { color: rgba(26,31,28,0.5) !important; }
+html.light .text-white\/40 { color: rgba(26,31,28,0.4) !important; }
+html.light .text-white\/30 { color: rgba(26,31,28,0.3) !important; }
+html.light .text-white\/20 { color: rgba(26,31,28,0.2) !important; }
+html.light .text-white\/10 { color: rgba(26,31,28,0.1) !important; }
+
+/* Dark bg overrides — make them white in light mode */
+html.light .bg-\[\#050805\] { background-color: #ffffff !important; }
+html.light .bg-\[\#050805\]\/80 { background-color: rgba(255,255,255,0.85) !important; }
+html.light .bg-\[\#050805\]\/90 { background-color: rgba(255,255,255,0.9) !important; }
+html.light .bg-\[\#050805\]\/95 { background-color: rgba(255,255,255,0.95) !important; }
+html.light .bg-\[\#0f1a14\] { background-color: #f8faf8 !important; }
+html.light .bg-\[\#0f1a14\]\/90 { background-color: rgba(248,250,248,0.9) !important; }
+html.light .bg-\[\#111a15\]\/70 { background-color: rgba(255,255,255,0.85) !important; }
+html.light .bg-\[\#0f1411\]\/85 { background-color: rgba(255,255,255,0.92) !important; }
+html.light .bg-\[\#121a15\] { background-color: #f5f8f6 !important; }
+
+/* Input / button bg overrides */
+html.light .bg-white\/\[0\.06\] { background-color: rgba(26,31,28,0.06) !important; }
+html.light .bg-white\/\[0\.04\] { background-color: rgba(26,31,28,0.04) !important; }
+html.light .bg-black\/30 { background-color: rgba(0,0,0,0.08) !important; }
+html.light .bg-black\/50 { background-color: rgba(0,0,0,0.12) !important; }
+
+/* Shadows — softer in light mode */
+html.light .shadow-\[0_20px_40px_rgba\(0\,0\,0\,0\.4\)\] { box-shadow: 0 8px 24px rgba(0,0,0,0.08) !important; }
+html.light .shadow-\[0_24px_50px_-12px_rgba\(0\,0\,0\,0\.5\)\] { box-shadow: 0 12px 32px -8px rgba(0,0,0,0.1) !important; }
+html.light .shadow-\[0_14px_34px_-12px_rgba\(0\,0\,0\,0\.6\)\] { box-shadow: 0 8px 24px -8px rgba(0,0,0,0.08) !important; }
+html.light .shadow-\[0_20px_50px_-12px_rgba\(0\,0\,0\,0\.6\)\] { box-shadow: 0 8px 24px -8px rgba(0,0,0,0.08) !important; }
+
+/* Phone frame in light mode */
+html.light .bg-\[\#080b09\] { background-color: #e8ece9 !important; }
+html.light .bg-\[\#1a1a1a\] { background-color: #d0d5d1 !important; }
+html.light .bg-\[\#2a2a2a\] { background-color: #b8bfb9 !important; }

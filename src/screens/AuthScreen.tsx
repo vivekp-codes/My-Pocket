@@ -14,19 +14,35 @@ const PROFILE_IMAGES = [
   "/Image-assets/Profile-assets/p7.png",
 ];
 
-// ── Slide direction for animations ────────────────────────────
+// ── Color palette ────────────────────────────────────────────
+const C = {
+  bright:  "#9AFF45",   // lightest — glows, active highlights
+  primary: "#73DA14",   // primary buttons, toggles, rings
+  mid:     "#5CB010",   // hover states, secondary accents
+  dark:    "#2E680A",   // borders, subtle accents
+  bg:      "#050805",   // deepest dark
+};
+
+// ── Minimal fade + y transition ─────────────────────────────
+const viewVariants = {
+  enter: { opacity: 0, y: 6 },
+  center: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -4 },
+};
+
+// ── Minimal slide for step transitions ────────────────────────
 const slideVariants = {
-  enter: (dir: number) => ({ x: dir > 0 ? 80 : -80, opacity: 0 }),
+  enter: (dir: number) => ({ x: dir > 0 ? 20 : -20, opacity: 0 }),
   center: { x: 0, opacity: 1 },
-  exit: (dir: number) => ({ x: dir > 0 ? -80 : 80, opacity: 0 }),
+  exit: (dir: number) => ({ x: dir > 0 ? -20 : 20, opacity: 0 }),
 };
 
 export default function AuthScreen() {
   const { signUp, login, createProfile, user } = useStore();
 
-  // If user exists but profile is incomplete, jump straight to avatar step
-  const initialView: AuthView = user && !user.profileComplete ? "signup3" : "login";
-  const [view, setView] = useState<AuthView>(initialView);
+  // Always start at login — user picks where to go
+  const [view, setView] = useState<AuthView>("login");
+
   const [slideDir, setSlideDir] = useState(1);
 
   // Form fields
@@ -124,50 +140,55 @@ export default function AuthScreen() {
     }
   };
 
+  // ── Shared button class ────────────────────────────────────
+  const btnPrimary = `w-full h-[48px] sm:h-[54px] rounded-full flex items-center justify-center font-display font-bold text-[13px] sm:text-sm active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed`;
+  const btnLabel = `${btnPrimary} bg-[#5CB010] hover:bg-[#5CB010]/90 text-[#050805] shadow-[0_8px_20px_-4px_rgba(92,176,16,0.35)]`;
+
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-bg px-4 relative overflow-hidden">
-      {/* Ambient blobs */}
-      <div className="absolute top-[20%] left-[10%] w-[250px] h-[250px] rounded-full bg-green/10 blur-[80px] pointer-events-none" />
-      <div className="absolute bottom-[20%] right-[10%] w-[300px] h-[300px] rounded-full bg-greenDeep/35 blur-[100px] pointer-events-none" />
+    <div className="min-h-screen w-full flex items-center justify-center bg-bg px-3 sm:px-4 relative overflow-hidden">
+      {/* Ambient blobs — using new palette */}
+      <div className="absolute top-[20%] left-[10%] w-[180px] sm:w-[250px] h-[180px] sm:h-[250px] rounded-full bg-[#73DA14]/10 blur-[60px] sm:blur-[80px] pointer-events-none" />
+      <div className="absolute bottom-[20%] right-[10%] w-[200px] sm:w-[300px] h-[200px] sm:h-[300px] rounded-full bg-[#2E680A]/35 blur-[70px] sm:blur-[100px] pointer-events-none" />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.2, 0.8, 0.2, 1] }}
-        className="w-full max-w-md bg-cardBg/60 border border-white/[0.04] backdrop-blur-xl rounded-[32px] p-6 shadow-[0_24px_50px_-12px_rgba(0,0,0,0.5)] z-10"
+        className="w-full max-w-md bg-cardBg/60 border border-white/[0.04] backdrop-blur-xl rounded-[24px] sm:rounded-[32px] p-5 sm:p-6 shadow-[0_24px_50px_-12px_rgba(0,0,0,0.5)] z-10"
       >
         {/* ── Header ──────────────────────────────────────── */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#bdff80]/10 border border-[#bdff80]/20 text-[#bdff80] text-xl font-bold mb-3">
-            💸
+        <div className="text-center mb-4 sm:mb-6">
+          <div className="flex items-center justify-center gap-3 mb-3 text-left">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#9AFF45]/20 via-[#73DA14]/15 to-[#2E680A]/10 backdrop-blur-md border border-[#73DA14]/20 flex items-center justify-center overflow-hidden">
+              <img src="/Image-assets/MP-LOGO.png" alt="My Pocket Logo" className="w-9 h-9 sm:w-11 sm:h-11 object-contain" />
+            </div>
+            <h2 className="font-display font-bold text-xl sm:text-2xl text-text leading-tight tracking-tight text-left">
+              <span className="block">My</span><span className="block">Pocket</span>
+            </h2>
           </div>
-          <h2 className="font-display font-bold text-2xl text-text leading-none tracking-tight">
-            Tracker
-          </h2>
-          <p className="text-xs text-textDim/50 mt-2">
-            Manage your liquid and account money
+          <p className="text-[10px] sm:text-[11px] text-textDim/40 mt-1">
+            Track smarter. Save better. Spend wisely.
           </p>
         </div>
 
         {/* ── Step indicator (signup only) ────────────────── */}
         {(view === "signup1" || view === "signup2" || view === "signup3") && (
-          <div className="flex items-center justify-center gap-2 mb-5">
+          <div className="flex items-center justify-center gap-2 mb-4 sm:mb-5">
             {["signup1", "signup2", "signup3"].map((s, i) => {
               const active =
                 (view === "signup1" && i === 0) ||
                 (view === "signup2" && i === 1) ||
                 (view === "signup3" && i === 2);
               const done =
-                (view === "signup2" && i === 0) ||
-                (view === "signup3" && i <= 1);
+                (view === "signup2" && i === 0) || (view === "signup3" && i <= 1);
               return (
                 <div key={s} className="flex items-center gap-2">
                   <div
                     className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold transition-all duration-300 ${
                       active
-                        ? "bg-[#bdff80] text-bg shadow-[0_0_12px_rgba(189,255,128,0.4)]"
+                        ? `bg-[#5CB010] text-[#050805] shadow-[0_0_12px_rgba(115,218,20,0.4)]`
                         : done
-                        ? "bg-[#bdff80]/20 text-[#bdff80]"
+                        ? `bg-[#5CB010]/20 text-[#5CB010]`
                         : "bg-surface border border-stroke text-textDim/40"
                     }`}
                   >
@@ -182,7 +203,7 @@ export default function AuthScreen() {
                   {i < 2 && (
                     <div
                       className={`w-8 h-[2px] rounded-full transition-all duration-300 ${
-                        done ? "bg-[#bdff80]/40" : "bg-surface"
+                        done ? "bg-[#5CB010]/40" : "bg-surface"
                       }`}
                     />
                   )}
@@ -196,13 +217,26 @@ export default function AuthScreen() {
         <AnimatePresence>
           {error && (
             <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="bg-coral/10 border border-coral/20 rounded-xl px-4 py-2.5 mb-4 text-xs font-semibold text-coral flex items-center gap-2 overflow-hidden"
+              initial={{ opacity: 0, y: -6, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -4, scale: 0.97 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className="relative bg-coral/[0.07] border border-coral/15 rounded-2xl px-4 py-3 mb-4 overflow-hidden"
             >
-              <span>⚠️</span>
-              {error}
+              {/* Subtle glow */}
+              <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-coral/30 to-transparent" />
+              <div className="flex items-center gap-2.5">
+                <div className="w-5 h-5 rounded-full bg-coral/15 flex items-center justify-center flex-shrink-0">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" className="text-coral">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                </div>
+                <p className="text-[11px] font-semibold text-coral/90 leading-snug">
+                  {error}
+                </p>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -215,17 +249,20 @@ export default function AuthScreen() {
           {view === "login" && (
             <motion.div
               key="login"
-              custom={slideDir}
-              variants={slideVariants}
+              variants={viewVariants}
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.25, ease: "easeInOut" }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
             >
               {/* Toggle */}
-              <div className="flex bg-surface border border-stroke rounded-full p-1 mb-5">
+              <div className="relative flex bg-surface border border-stroke rounded-full p-1 mb-4 sm:mb-5">
+                <div
+                  className="absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-full bg-[#5CB010] shadow-sm transition-all duration-200 ease-out"
+                  style={{ transform: "translateX(0)" }}
+                />
                 <button
-                  className="flex-1 py-2.5 rounded-full font-display font-bold text-xs bg-[#bdff80] text-bg shadow-sm"
+                  className="relative z-10 flex-1 py-2 sm:py-2.5 rounded-full font-display font-bold text-[11px] sm:text-xs text-[#050805]"
                 >
                   Login
                 </button>
@@ -236,18 +273,18 @@ export default function AuthScreen() {
                     setError(null);
                     goTo("signup1");
                   }}
-                  className="flex-1 py-2.5 rounded-full font-display font-bold text-xs text-textDim hover:text-text transition-all"
+                  className="relative z-10 flex-1 py-2 sm:py-2.5 rounded-full font-display font-bold text-[11px] sm:text-xs text-textDim hover:text-text transition-all"
                 >
                   Sign Up
                 </button>
               </div>
 
-              <p className="text-xs text-textDim/50 text-center mb-5">
+              <p className="text-[11px] sm:text-xs text-textDim/50 text-center mb-4 sm:mb-5">
                 Enter your credentials to log in
               </p>
 
               {/* Email */}
-              <div className="bg-surface border border-stroke rounded-[18px] p-3.5 focus-within:border-[#bdff80]/40 transition-colors mb-3">
+              <div className="bg-surface border border-stroke rounded-[14px] sm:rounded-[18px] p-3 sm:p-3.5 focus-within:border-[#5CB010]/40 transition-colors mb-2.5 sm:mb-3">
                 <label className="text-[10px] font-bold text-textDim/40 uppercase tracking-wider block">
                   Email Address
                 </label>
@@ -261,7 +298,7 @@ export default function AuthScreen() {
               </div>
 
               {/* Password */}
-              <div className="bg-surface border border-stroke rounded-[18px] p-3.5 focus-within:border-[#bdff80]/40 transition-colors mb-6">
+              <div className="bg-surface border border-stroke rounded-[14px] sm:rounded-[18px] p-3 sm:p-3.5 focus-within:border-[#5CB010]/40 transition-colors mb-4 sm:mb-6">
                 <label className="text-[10px] font-bold text-textDim/40 uppercase tracking-wider block">
                   Password
                 </label>
@@ -296,10 +333,10 @@ export default function AuthScreen() {
               <button
                 onClick={handleLogin}
                 disabled={loading || !email.includes("@") || password.length < 6}
-                className="w-full h-[54px] bg-[#bdff80] hover:bg-[#bdff80]/90 text-bg rounded-full flex items-center justify-center font-display font-bold text-sm shadow-[0_8px_20px_-4px_rgba(189,255,128,0.25)] active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className={`${btnPrimary} bg-[#5CB010] hover:bg-[#5CB010]/90 text-[#050805] shadow-[0_8px_20px_-4px_rgba(92,176,16,0.35)]`}
               >
                 {loading ? (
-                  <svg className="animate-spin h-5 w-5 text-bg" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-5 w-5 text-[#050805]" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
@@ -315,14 +352,17 @@ export default function AuthScreen() {
             <motion.div
               key="signup1"
               custom={slideDir}
-              variants={slideVariants}
+              variants={viewVariants}
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.25, ease: "easeInOut" }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
             >
               {/* Toggle */}
-              <div className="flex bg-surface border border-stroke rounded-full p-1 mb-5">
+              <div className="relative flex bg-surface border border-stroke rounded-full p-1 mb-4 sm:mb-5">
+                <div
+                  className="absolute inset-y-1 left-[calc(50%+2px)] w-[calc(50%-4px)] rounded-full bg-[#5CB010] shadow-sm transition-all duration-200 ease-out"
+                />
                 <button
                   onClick={() => {
                     setPassword("");
@@ -330,28 +370,28 @@ export default function AuthScreen() {
                     setError(null);
                     goBack("login");
                   }}
-                  className="flex-1 py-2.5 rounded-full font-display font-bold text-xs text-textDim hover:text-text transition-all"
+                  className="relative z-10 flex-1 py-2 sm:py-2.5 rounded-full font-display font-bold text-[11px] sm:text-xs text-textDim hover:text-text transition-all"
                 >
                   Login
                 </button>
-                <button className="flex-1 py-2.5 rounded-full font-display font-bold text-xs bg-[#bdff80] text-bg shadow-sm">
+                <button className="relative z-10 flex-1 py-2 sm:py-2.5 rounded-full font-display font-bold text-[11px] sm:text-xs text-[#050805]">
                   Sign Up
                 </button>
               </div>
 
-              <p className="text-xs text-textDim/50 text-center mb-5">
+              <p className="text-[11px] sm:text-xs text-textDim/50 text-center mb-4 sm:mb-5">
                 Step 1 of 3 — Choose a username and enter your email
               </p>
 
               {/* Username */}
-              <div className="bg-surface border border-stroke rounded-[18px] p-3.5 focus-within:border-[#bdff80]/40 transition-colors mb-3">
+              <div className="bg-surface border border-stroke rounded-[14px] sm:rounded-[18px] p-3 sm:p-3.5 focus-within:border-[#5CB010]/40 transition-colors mb-2.5 sm:mb-3">
                 <label className="text-[10px] font-bold text-textDim/40 uppercase tracking-wider block">
                   Username
                 </label>
                 <input
                   type="text"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ""))}
+                  onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_ ]/g, ""))}
                   className="w-full bg-transparent text-text font-semibold text-sm mt-1 focus:outline-none placeholder-textDim/20"
                   placeholder="e.g. john_doe"
                   maxLength={20}
@@ -359,7 +399,7 @@ export default function AuthScreen() {
               </div>
 
               {/* Email */}
-              <div className="bg-surface border border-stroke rounded-[18px] p-3.5 focus-within:border-[#bdff80]/40 transition-colors mb-6">
+              <div className="bg-surface border border-stroke rounded-[14px] sm:rounded-[18px] p-3 sm:p-3.5 focus-within:border-[#5CB010]/40 transition-colors mb-4 sm:mb-6">
                 <label className="text-[10px] font-bold text-textDim/40 uppercase tracking-wider block">
                   Email Address
                 </label>
@@ -375,7 +415,7 @@ export default function AuthScreen() {
               <button
                 onClick={handleStep1}
                 disabled={username.length < 2 || !email.includes("@")}
-                className="w-full h-[54px] bg-[#bdff80] hover:bg-[#bdff80]/90 text-bg rounded-full flex items-center justify-center font-display font-bold text-sm shadow-[0_8px_20px_-4px_rgba(189,255,128,0.25)] active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className={`${btnPrimary} bg-[#5CB010] hover:bg-[#5CB010]/90 text-[#050805] shadow-[0_8px_20px_-4px_rgba(92,176,16,0.35)]`}
               >
                 Continue
               </button>
@@ -393,11 +433,11 @@ export default function AuthScreen() {
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.25, ease: "easeInOut" }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
             >
               <button
                 onClick={() => goBack("signup1")}
-                className="flex items-center gap-2 text-xs text-textDim hover:text-text mb-4 transition-colors"
+                className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-textDim hover:text-text mb-3 sm:mb-4 transition-colors"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -405,12 +445,12 @@ export default function AuthScreen() {
                 Back
               </button>
 
-              <p className="text-xs text-textDim/50 text-center mb-5">
+              <p className="text-[11px] sm:text-xs text-textDim/50 text-center mb-4 sm:mb-5">
                 Step 2 of 3 — Set a secure password
               </p>
 
               {/* Password */}
-              <div className="bg-surface border border-stroke rounded-[18px] p-3.5 focus-within:border-[#bdff80]/40 transition-colors mb-3">
+              <div className="bg-surface border border-stroke rounded-[14px] sm:rounded-[18px] p-3 sm:p-3.5 focus-within:border-[#5CB010]/40 transition-colors mb-2.5 sm:mb-3">
                 <label className="text-[10px] font-bold text-textDim/40 uppercase tracking-wider block">
                   Password
                 </label>
@@ -443,7 +483,7 @@ export default function AuthScreen() {
               </div>
 
               {/* Confirm Password */}
-              <div className="bg-surface border border-stroke rounded-[18px] p-3.5 focus-within:border-[#bdff80]/40 transition-colors mb-2">
+              <div className="bg-surface border border-stroke rounded-[14px] sm:rounded-[18px] p-3 sm:p-3.5 focus-within:border-[#5CB010]/40 transition-colors mb-1.5 sm:mb-2">
                 <label className="text-[10px] font-bold text-textDim/40 uppercase tracking-wider block">
                   Confirm Password
                 </label>
@@ -460,21 +500,44 @@ export default function AuthScreen() {
 
               {/* Match indicator */}
               {confirmPassword.length > 0 && (
-                <div className={`text-[10px] font-semibold mb-5 px-1 transition-colors ${
-                  password === confirmPassword ? "text-[#3fe07e]" : "text-coral"
-                }`}>
-                  {password === confirmPassword ? "✓ Passwords match" : "✗ Passwords don't match"}
-                </div>
+                <motion.div
+                  initial={{ opacity: 0, y: -4, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ duration: 0.25, ease: "easeOut" }}
+                  className={`mb-5 mx-1 flex items-center gap-2 px-3 py-2 rounded-xl text-[11px] font-semibold transition-all duration-300 ${
+                    password === confirmPassword
+                      ? "bg-[#5CB010]/10 border border-[#5CB010]/20 text-[#5CB010]"
+                      : "bg-coral/10 border border-coral/20 text-coral"
+                  }`}
+                >
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    password === confirmPassword
+                      ? "bg-[#5CB010]/20"
+                      : "bg-coral/20"
+                  }`}>
+                    {password === confirmPassword ? (
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    )}
+                  </div>
+                  {password === confirmPassword ? "Passwords match" : "Passwords don't match"}
+                </motion.div>
               )}
               {confirmPassword.length === 0 && <div className="mb-5" />}
 
               <button
                 onClick={handleStep2}
                 disabled={loading || password.length < 6 || password !== confirmPassword}
-                className="w-full h-[54px] bg-[#bdff80] hover:bg-[#bdff80]/90 text-bg rounded-full flex items-center justify-center font-display font-bold text-sm shadow-[0_8px_20px_-4px_rgba(189,255,128,0.25)] active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className={`${btnPrimary} bg-[#5CB010] hover:bg-[#5CB010]/90 text-[#050805] shadow-[0_8px_20px_-4px_rgba(92,176,16,0.35)]`}
               >
                 {loading ? (
-                  <svg className="animate-spin h-5 w-5 text-bg" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-5 w-5 text-[#050805]" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
@@ -494,11 +557,11 @@ export default function AuthScreen() {
               initial="enter"
               animate="center"
               exit="exit"
-              transition={{ duration: 0.25, ease: "easeInOut" }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
             >
               <button
                 onClick={() => goBack("signup2")}
-                className="flex items-center gap-2 text-xs text-textDim hover:text-text mb-4 transition-colors"
+                className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-textDim hover:text-text mb-3 sm:mb-4 transition-colors"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -506,17 +569,17 @@ export default function AuthScreen() {
                 Back
               </button>
 
-              <div className="text-center mb-4">
-                <h3 className="font-display font-bold text-lg text-text">
+              <div className="text-center mb-3 sm:mb-4">
+                <h3 className="font-display font-bold text-base sm:text-lg text-text">
                   Pick Your Avatar
                 </h3>
-                <p className="text-xs text-textDim/50 mt-1">
+                <p className="text-[11px] sm:text-xs text-textDim/50 mt-1">
                   Step 3 of 3 — Choose how you appear to others
                 </p>
               </div>
 
               {/* Large preview with glow pulse */}
-              <div className="flex justify-center mb-6">
+              <div className="flex justify-center mb-4 sm:mb-6">
                 <motion.div
                   key={selectedImage}
                   initial={{ scale: 0.5, opacity: 0, rotate: -15 }}
@@ -528,9 +591,9 @@ export default function AuthScreen() {
                   <motion.div
                     animate={{ scale: [1, 1.15, 1], opacity: [0.3, 0.15, 0.3] }}
                     transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-                    className="absolute inset-[-6px] rounded-full bg-[#bdff80]/20 blur-md"
+                    className="absolute inset-[-4px] sm:inset-[-6px] rounded-full bg-[#5CB010]/20 blur-md"
                   />
-                  <div className="relative w-[110px] h-[110px] rounded-full overflow-hidden border-[3px] border-[#bdff80] shadow-[0_0_40px_rgba(189,255,128,0.3)]">
+                  <div className="relative w-[90px] h-[90px] sm:w-[110px] sm:h-[110px] rounded-full overflow-hidden border-[3px] border-[#5CB010] shadow-[0_0_40px_rgba(92,176,16,0.3)]">
                     <img
                       src={selectedImage}
                       alt="Selected avatar"
@@ -540,11 +603,10 @@ export default function AuthScreen() {
                 </motion.div>
               </div>
 
-              {/* Horizontal scrolling carousel — tall */}
-              <div className="mb-6">
+              {/* Horizontal scrolling carousel */}
+              <div className="mb-4 sm:mb-6">
                 <div
-                  ref={scrollRef}
-                  className="flex gap-4 overflow-x-auto pb-3 pt-1 px-3 snap-x snap-mandatory scrollbar-hide"
+                  ref={scrollRef}                    className="flex gap-3 sm:gap-4 overflow-x-auto pb-3 pt-1 px-2 sm:px-3 snap-x snap-mandatory scrollbar-hide"
                   style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
                 >
                   {PROFILE_IMAGES.map((img, i) => {
@@ -560,12 +622,8 @@ export default function AuthScreen() {
                           stiffness: 350,
                           damping: 22,
                         }}
-
                         whileTap={{ scale: 0.9 }}
-                        onClick={() => setSelectedImage(img)}
-                        className={`relative flex-shrink-0 snap-center flex flex-col items-center gap-2.5 transition-all duration-300 ${
-                          isSelected ? "" : ""
-                        }`}
+                        onClick={() => setSelectedImage(img)}                          className="relative flex-shrink-0 snap-center flex flex-col items-center gap-2 transition-all duration-300"
                       >
                         <motion.div
                           animate={
@@ -578,15 +636,13 @@ export default function AuthScreen() {
                               ? { duration: 1.8, repeat: Infinity, ease: "easeInOut" }
                               : { duration: 0.3 }
                           }
-                          className={`relative w-[80px] h-[80px] rounded-full overflow-visible flex items-center justify-center transition-all duration-300 ${
-                            isSelected
-                              ? ""
-                              : "opacity-50 hover:opacity-90"
+                          className={`relative w-[68px] h-[68px] sm:w-[80px] sm:h-[80px] rounded-full overflow-visible flex items-center justify-center transition-all duration-300 ${
+                            isSelected ? "" : "opacity-50 hover:opacity-90"
                           }`}
                         >
-                          <div className={`w-[70px] h-[70px] rounded-full overflow-hidden transition-all duration-300 ${
+                          <div className={`w-[60px] h-[60px] sm:w-[70px] sm:h-[70px] rounded-full overflow-hidden transition-all duration-300 ${
                             isSelected
-                              ? "ring-[2.5px] ring-[#bdff80]"
+                              ? "ring-[2.5px] ring-[#5CB010]"
                               : "ring-1 ring-white/[0.08] hover:ring-white/[0.2] shadow-none"
                           }`}>
                             <img
@@ -602,8 +658,8 @@ export default function AuthScreen() {
                               transition={{ type: "spring", stiffness: 500, damping: 20 }}
                               className="absolute inset-0 flex items-center justify-center"
                             >
-                              <div className="w-4 h-4 rounded-full bg-[#bdff80] flex items-center justify-center shadow-lg">
-                                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#06150d" strokeWidth={4}>
+                              <div className="w-4 h-4 rounded-full bg-[#5CB010] flex items-center justify-center shadow-lg">
+                                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#050805" strokeWidth={4}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                 </svg>
                               </div>
@@ -614,7 +670,7 @@ export default function AuthScreen() {
                         <motion.span
                           animate={isSelected ? { opacity: 1, y: 0 } : { opacity: 0, y: 4 }}
                           transition={{ duration: 0.25 }}
-                          className="text-[10px] font-bold text-[#bdff80] h-3"
+                          className="text-[10px] font-bold text-[#5CB010] h-3"
                         >
                           {`Avatar ${i + 1}`}
                         </motion.span>
@@ -630,7 +686,7 @@ export default function AuthScreen() {
                       layout
                       className={`h-1.5 rounded-full transition-all duration-300 ${
                         selectedImage === img
-                          ? "bg-[#bdff80] w-5"
+                          ? "bg-[#5CB010] w-5"
                           : "bg-white/10 w-1.5"
                       }`}
                     />
@@ -641,10 +697,10 @@ export default function AuthScreen() {
               <button
                 onClick={handleStep3}
                 disabled={loading}
-                className="w-full h-[54px] bg-[#bdff80] hover:bg-[#bdff80]/90 text-bg rounded-full flex items-center justify-center font-display font-bold text-sm shadow-[0_8px_20px_-4px_rgba(189,255,128,0.25)] active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className={`${btnPrimary} bg-[#5CB010] hover:bg-[#5CB010]/90 text-[#050805] shadow-[0_8px_20px_-4px_rgba(92,176,16,0.35)]`}
               >
                 {loading ? (
-                  <svg className="animate-spin h-5 w-5 text-bg" fill="none" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-5 w-5 text-[#050805]" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>

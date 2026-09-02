@@ -13,7 +13,7 @@ function AppContent() {
         <div className="min-h-screen w-full flex items-center justify-center bg-bg">
           <div className="flex flex-col items-center gap-3">
             <svg
-              className="animate-spin h-8 w-8 text-[#bdff80]"
+              className="animate-spin h-8 w-8 text-[#5CB010]"
               fill="none"
               viewBox="0 0 24 24"
             >

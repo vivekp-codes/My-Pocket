@@ -5,6 +5,7 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Dark mode (default)
         bg: "#0d130f",
         bg2: "#080c09",
         surface: "#121b16",

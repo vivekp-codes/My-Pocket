@@ -21,7 +21,7 @@ const navIcons = [
     id: "add",
     isAdd: true,
     svg: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="#06150d" strokeWidth={2.6} strokeLinecap="round">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#050805" strokeWidth={2.6} strokeLinecap="round">
         <path d="M12 5v14M5 12h14" />
       </svg>
     ),
@@ -63,8 +63,8 @@ export default function BottomNav({ activeTab, onChangeTab }: BottomNavProps) {
           <button
             key={item.id}
             onClick={() => onChangeTab(item.id)}
-            className="w-[52px] h-[52px] rounded-full flex items-center justify-center shadow-[0_10px_22px_-6px_rgba(63,224,126,0.55)] active:scale-90 transition-transform"
-            style={{ background: "linear-gradient(155deg,#a8ff9e 0%, #3fe07e 65%, #159654 100%)" }}
+            className="w-[52px] h-[52px] rounded-full flex items-center justify-center shadow-[0_10px_22px_-6px_rgba(92,176,16,0.55)] active:scale-90 transition-transform"
+            style={{ background: "linear-gradient(155deg, #9AFF45 0%, #73DA14 40%, #5CB010 100%)" }}
           >
             <span className="w-[22px] h-[22px]">{item.svg}</span>
           </button>

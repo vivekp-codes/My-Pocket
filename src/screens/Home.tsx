@@ -7,11 +7,13 @@ import TransactionList from "../components/TransactionList";
 import BottomNav from "../components/BottomNav";
 import SendMoney from "../components/SendMoney";
 import StatisticsCard from "../components/StatisticsCard";
+import BalanceSetup from "../components/BalanceSetup";
 import { useStore } from "../context/StoreContext";
 
 export default function Home() {
   const { balances, transactions, transferMoney } = useStore();
   const [activeTab, setActiveTab] = useState<string>("home");
+  const [showSetup, setShowSetup] = useState(!balances);
 
   const handleSendSuccess = async (amount: number, _recipient: string) => {
     await transferMoney(amount, "liquid", `Transfer to ${_recipient}`);
@@ -22,8 +24,7 @@ export default function Home() {
 
   return (
     <div
-      className="h-full w-full text-text relative"
-      style={{ background: "linear-gradient(180deg, #121a15 0%, #0d130f 30%)" }}
+      className="h-full w-full text-text relative bg-bg"
     >
       {/* Scrollable content area — padded so last item doesn't hide behind nav */}
       <div className="h-full overflow-y-auto overflow-x-hidden max-w-xl mx-auto w-full pt-6 pb-[100px]">
@@ -36,7 +37,7 @@ export default function Home() {
               exit={{ opacity: 0, x: 15 }}
               transition={{ duration: 0.3 }}
             >
-              <TopBar />
+              <TopBar onSetupWallet={() => setShowSetup(true)} />
               <div className="font-display font-bold text-[34px] leading-none tracking-tight px-5 pb-5 text-text">
                 Overview
               </div>
@@ -91,7 +92,7 @@ export default function Home() {
               </p>
               <button
                 onClick={() => setActiveTab("home")}
-                className="mt-6 bg-[#bdff80] text-bg font-bold px-5 py-2 rounded-full text-xs hover:bg-opacity-80 transition-all"
+                className="mt-6 bg-[#5CB010] text-[#050805] font-bold px-5 py-2 rounded-full text-xs hover:bg-[#5CB010]/90 transition-all"
               >
                 Go Back Home
               </button>
@@ -104,6 +105,13 @@ export default function Home() {
       <div className="absolute bottom-0 left-0 right-0 w-full px-3 pb-3 pt-1 z-40">
         <BottomNav activeTab={activeTab} onChangeTab={setActiveTab} />
       </div>
+
+      {/* Balance Setup — bottom sheet overlay for new users */}
+      <AnimatePresence>
+        {showSetup && !balances && (
+          <BalanceSetup onComplete={() => setShowSetup(false)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

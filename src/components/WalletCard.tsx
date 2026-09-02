@@ -5,7 +5,7 @@ interface WalletCardProps {
   balance?: number;
 }
 
-export default function WalletCard({ balance = 231560.40 }: WalletCardProps) {
+export default function WalletCard({ balance = 0 }: WalletCardProps) {
   const integerPart = Math.floor(balance);
   // Get decimals (up to 2 places)
   const decimalPart = (balance % 1).toFixed(2).substring(1); // e.g. ".40"
@@ -18,16 +18,16 @@ export default function WalletCard({ balance = 231560.40 }: WalletCardProps) {
       className="px-5"
     >
       <div className="relative h-[196px] overflow-hidden rounded-[28px] isolate shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
-        {/* fluid organic texture */}
+        {/* fluid organic texture — new palette */}
         <div
           className="absolute inset-0 scale-[1.1] saturate-[1.3] brightness-[1.05]"
           style={{
             background:
-              "radial-gradient(circle at 85% 15%, #bdff80 0%, transparent 60%)," +
-              "radial-gradient(circle at 10% 25%, #a8ff9e 0%, transparent 55%)," +
-              "radial-gradient(circle at 45% 90%, #0d5d36 0%, transparent 70%)," +
-              "radial-gradient(circle at 5% 95%, #052614 0%, transparent 60%)," +
-              "linear-gradient(155deg, #1c7c47 0%, #082d1b 65%, #041b0f 100%)",
+              "radial-gradient(circle at 85% 15%, #9AFF45 0%, transparent 60%)," +
+              "radial-gradient(circle at 10% 25%, #73DA14 0%, transparent 55%)," +
+              "radial-gradient(circle at 45% 90%, #2E680A 0%, transparent 70%)," +
+              "radial-gradient(circle at 5% 95%, #0a1a06 0%, transparent 60%)," +
+              "linear-gradient(155deg, #5CB010 0%, #2E680A 65%, #0a1a06 100%)",
           }}
         />
         {/* grain */}
@@ -41,41 +41,33 @@ export default function WalletCard({ balance = 231560.40 }: WalletCardProps) {
         
         {/* Watermarked text */}
         <div className="absolute top-[20px] left-[10px] text-[75px] font-bold text-white/[0.03] select-none font-display pointer-events-none tracking-tighter leading-none">
-          wallet
+          MY POCKET
         </div>
 
         {/* shade for text contrast */}
-        <div className="absolute inset-0" style={{ backgroundImage: "linear-gradient(180deg, rgba(3,10,6,0) 30%, rgba(3,10,6,0.4) 100%)" }} />
+        <div className="absolute inset-0" style={{ backgroundImage: "linear-gradient(180deg, rgba(5,8,5,0) 30%, rgba(5,8,5,0.4) 100%)" }} />
 
         <div className="relative z-10 h-full flex flex-col justify-between p-5">
           <div className="flex items-center justify-between">
-            <div className="inline-flex items-center gap-1.5 bg-[#aeff6b]/20 border border-white/10 backdrop-blur-md rounded-full py-1 px-3 text-[11px] font-bold text-[#eafff0]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#bdff80]" />
-              Main Wallet (USD)
+            <div className="inline-flex items-center gap-1.5 bg-[#9AFF45]/20 border border-white/10 backdrop-blur-md rounded-full py-1 px-3 text-[11px] font-bold text-[#eafff0]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B]" />
+              Main Wallet
             </div>
             
-            {/* Golden Chip */}
-            <svg width="34" height="26" viewBox="0 0 24 18" fill="none" className="opacity-90">
-              <rect width="24" height="18" rx="3.5" fill="url(#chip-grad)" />
-              <rect x="3" y="2" width="18" height="14" rx="2" stroke="#4f3807" strokeWidth="0.8" opacity="0.4" />
-              <path d="M7 2v14M17 2v14M3 6h18M3 12h18" stroke="#4f3807" strokeWidth="0.8" opacity="0.4" />
-              <defs>
-                <linearGradient id="chip-grad" x1="0" y1="0" x2="24" y2="18" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#ffe17d" />
-                  <stop offset="0.5" stopColor="#dca434" />
-                  <stop offset="1" stopColor="#a37415" />
-                </linearGradient>
-              </defs>
-            </svg>
+            {/* Card circles — Visa/Mastercard style */}
+            <div className="relative w-[42px] h-[26px]">
+              <div className="absolute left-0 top-0 w-[26px] h-[26px] rounded-full bg-[#F59E0B]/80 mix-blend-screen" />
+              <div className="absolute right-0 top-0 w-[26px] h-[26px] rounded-full bg-[#EF4444]/70 mix-blend-screen" />
+            </div>
           </div>
 
           <div>
             <div className="font-display font-bold text-[32px] text-white tracking-tight leading-none">
-              <CountUp target={integerPart} prefix="" />
+              <span className="text-white/60 mr-1.5">₹</span><CountUp target={integerPart} prefix="" />
               <span className="text-white/80">{decimalPart}</span>
             </div>
-            <div className="text-[12px] font-semibold text-[#bdff80] tracking-wide uppercase mt-1.5">
-              US Dollar
+            <div className="text-[12px] font-semibold text-[#9AFF45] tracking-wide mt-1.5">
+              INDIAN RUPEE
             </div>
           </div>
         </div>

@@ -3,8 +3,12 @@ import { motion } from "framer-motion";
 import { useStore } from "../context/StoreContext";
 import ProfileModal from "./ProfileModal";
 
-export default function TopBar() {
-  const { user, theme, showProfile, setShowProfile } = useStore();
+interface TopBarProps {
+  onSetupWallet?: () => void;
+}
+
+export default function TopBar({ onSetupWallet }: TopBarProps) {
+  const { user, theme, toggleTheme, showProfile, setShowProfile } = useStore();
   const anchorRef = useRef<HTMLButtonElement>(null);
 
   const displayName = user?.name
@@ -34,8 +38,8 @@ export default function TopBar() {
           title="View profile"
           className="flex items-center gap-3"
         >
-          <div className="relative w-12 h-12 rounded-full p-[1.5px] bg-gradient-to-br from-[#bdff80]/80 via-[#3fe07e]/70 to-[#0d5c2a]/60 shadow-[0_0_12px_rgba(63,224,126,0.25)] backdrop-blur-sm">
-            <div className="w-full h-full rounded-full overflow-hidden bg-[#0f1a14]/90 flex items-center justify-center font-display font-bold text-sm text-text">
+          <div className="relative w-12 h-12 rounded-full p-[1.5px] bg-gradient-to-br from-[#9AFF45]/80 via-[#73DA14]/70 to-[#2E680A]/60 shadow-[0_0_12px_rgba(115,218,20,0.25)] backdrop-blur-sm">
+            <div className="w-full h-full rounded-full overflow-hidden bg-[#050805]/90 flex items-center justify-center font-display font-bold text-sm text-text">
               {user?.profileImage ? (
                 <img src={user.profileImage} alt="Profile" className="w-full h-full object-cover" />
               ) : (
@@ -47,13 +51,13 @@ export default function TopBar() {
             <p className="text-[13px] font-bold text-text leading-tight">
               {displayName}
             </p>
-            <p className="text-[10px] text-[#3fe07e]/60 leading-tight">
+            <p className="text-[10px] text-[#73DA14]/60 leading-tight">
               {user?.email || ""}
             </p>
           </div>
         </button>
 
-        <div className="w-11 h-11 rounded-[14px] bg-surface border border-[#3fe07e]/50 flex items-center justify-center text-text">
+        <button onClick={toggleTheme} className="w-11 h-11 rounded-[14px] bg-surface border border-[#5CB010]/50 flex items-center justify-center text-text active:scale-95 transition-transform">
           {theme === "dark" ? (
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
@@ -71,13 +75,14 @@ export default function TopBar() {
               <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
             </svg>
           )}
-        </div>
+        </button>
       </motion.div>
 
       <ProfileModal
         isOpen={showProfile}
         onClose={() => setShowProfile(false)}
         anchorRef={anchorRef}
+        onSetupWallet={onSetupWallet}
       />
     </div>
   );

@@ -55,6 +55,7 @@ interface StoreContextType {
     profileImage?: string
   ) => Promise<{ success: boolean; error?: string }>;
   updateUsername: (newName: string) => Promise<{ success: boolean; error?: string }>;
+  saveBalance: (liquidAmount: number, accountAmount: number) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   addExpense: (
     amount: number,
@@ -66,7 +67,8 @@ interface StoreContextType {
     amount: number,
     type: "income_salary" | "income_topup",
     bucket: BucketType,
-    note?: string
+    note?: string,
+    category?: string
   ) => Promise<void>;
   transferMoney: (
     amount: number,
@@ -105,9 +107,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     localStorage.setItem("expense_tracker_theme", theme);
     if (theme === "dark") {
-      document.documentElement.classList.add("dark");
+      document.documentElement.classList.remove("light");
     } else {
-      document.documentElement.classList.remove("dark");
+      document.documentElement.classList.add("light");
     }
   }, [theme]);
 
@@ -133,39 +135,75 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const balanceDoc = await getDoc(doc(db, "balances", uid));
     const balanceData = balanceDoc.exists() ? balanceDoc.data() : null;
 
-    const balanceObj: Balance = {
+    // If no balance document exists, user needs to set up their wallet
+    const balanceObj: Balance | null = balanceData ? {
       userId: uid,
-      liquidAmount: Number(balanceData?.liquid_amount ?? 5850.40),
-      accountAmount: Number(balanceData?.account_amount ?? 225710.00),
-    };
+      liquidAmount: Number(balanceData.liquid_amount ?? 0),
+      accountAmount: Number(balanceData.account_amount ?? 0),
+    } : null;
 
-    // Transactions
-    const txQuery = query(
-      collection(db, "transactions"),
-      where("user_id", "==", uid),
-      orderBy("date", "desc")
-    );
-    const txSnapshot = await getDocs(txQuery);
-    const txList: Transaction[] = txSnapshot.docs.map((d) => {
-      const data = d.data();
-      return {
-        id: d.id,
-        userId: data.user_id,
-        type: data.type,
-        bucket: data.bucket,
-        category: data.category,
-        amount: Number(data.amount),
-        date: data.date,
-        dayLabel: data.day_label,
-        note: data.note,
-        recipient: data.recipient,
-        name: data.name,
-        icon: data.icon,
-        iconBg: data.icon_bg,
-        meta: data.meta,
-        currency: data.currency,
-      };
-    });
+    // Transactions — try with orderBy first, fallback to simple query if index missing
+    let txList: Transaction[] = [];
+    try {
+      const txQuery = query(
+        collection(db, "transactions"),
+        where("user_id", "==", uid),
+        orderBy("date", "desc")
+      );
+      const txSnapshot = await getDocs(txQuery);
+      txList = txSnapshot.docs.map((d) => {
+        const data = d.data();
+        const bucketLabel = data.bucket === "liquid" ? "In Hand" : data.bucket === "account" ? "Account" : "";
+        return {
+          id: d.id,
+          userId: data.user_id,
+          type: data.type,
+          bucket: data.bucket,
+          category: data.category,
+          amount: Number(data.amount),
+          date: data.date,
+          dayLabel: data.day_label,
+          note: data.note,
+          recipient: data.recipient,
+          name: data.name,
+          icon: data.icon,
+          iconBg: data.icon_bg,
+          meta: data.bucket_label || bucketLabel || data.meta || "",
+          currency: data.currency,
+        };
+      });
+    } catch (indexError) {
+      // Fallback: query without orderBy (no index needed)
+      console.warn("Index missing, using fallback query:", indexError);
+      const txQuerySimple = query(
+        collection(db, "transactions"),
+        where("user_id", "==", uid)
+      );
+      const txSnapshot = await getDocs(txQuerySimple);
+      txList = txSnapshot.docs.map((d) => {
+        const data = d.data();
+        const bucketLabel = data.bucket === "liquid" ? "In Hand" : data.bucket === "account" ? "Account" : "";
+        return {
+          id: d.id,
+          userId: data.user_id,
+          type: data.type,
+          bucket: data.bucket,
+          category: data.category,
+          amount: Number(data.amount),
+          date: data.date,
+          dayLabel: data.day_label,
+          note: data.note,
+          recipient: data.recipient,
+          name: data.name,
+          icon: data.icon,
+          iconBg: data.icon_bg,
+          meta: data.bucket_label || bucketLabel || data.meta || "",
+          currency: data.currency,
+        };
+      });
+      // Sort manually
+      txList.sort((a, b) => b.date.localeCompare(a.date));
+    }
 
     setUser(userObj);
     setBalances(balanceObj);
@@ -275,103 +313,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         created_at: serverTimestamp(),
       });
 
-      // Save balance
-      await setDoc(doc(db, "balances", uid), {
-        liquid_amount: 5850.40,
-        account_amount: 225710.00,
-        updated_at: serverTimestamp(),
-      });
-
-      // Create sample transactions
-      const day2 = new Date(startDate);
-      day2.setDate(day2.getDate() + 1);
-      const day3 = new Date(startDate);
-      day3.setDate(day3.getDate() + 2);
-      const day4 = new Date(startDate);
-      day4.setDate(day4.getDate() + 3);
-
-      const sampleTx = [
-        {
-          user_id: uid,
-          type: "income_salary",
-          bucket: "account",
-          amount: 225710.00,
-          date: startDateStr,
-          day_label: 1,
-          name: "Salary Credit",
-          icon: "💰",
-          icon_bg: "#153a24",
-          note: "Initial Month Salary",
-          currency: "USD",
-          created_at: serverTimestamp(),
-        },
-        {
-          user_id: uid,
-          type: "income_topup",
-          bucket: "liquid",
-          amount: 8000.00,
-          date: startDateStr,
-          day_label: 1,
-          name: "Liquid Cash Setup",
-          icon: "💵",
-          icon_bg: "#1c2a20",
-          note: "ATM Withdrawal",
-          currency: "USD",
-          created_at: serverTimestamp(),
-        },
-        {
-          user_id: uid,
-          type: "expense",
-          bucket: "liquid",
-          category: "food",
-          amount: 340.00,
-          date: day2.toISOString().split("T")[0],
-          day_label: 2,
-          name: "Swiggy Order",
-          icon: "🍔",
-          icon_bg: "#1c2a20",
-          note: "Burger lunch",
-          currency: "USD",
-          created_at: serverTimestamp(),
-        },
-        {
-          user_id: uid,
-          type: "expense",
-          bucket: "liquid",
-          category: "entertainment",
-          amount: 500.00,
-          date: day3.toISOString().split("T")[0],
-          day_label: 3,
-          name: "Movie Tickets",
-          icon: "🎬",
-          icon_bg: "#1c2a20",
-          note: "Split with Felix",
-          currency: "USD",
-          created_at: serverTimestamp(),
-        },
-        {
-          user_id: uid,
-          type: "expense",
-          bucket: "liquid",
-          category: "shopping",
-          amount: 1309.60,
-          date: day4.toISOString().split("T")[0],
-          day_label: 4,
-          name: "Marc Cucurella Store",
-          icon: "👕",
-          icon_bg: "#1c2a20",
-          note: "Summer Tee",
-          currency: "USD",
-          created_at: serverTimestamp(),
-        },
-      ];
-
-      // Create a sub-collection for transactions under the user
-      for (const tx of sampleTx) {
-        const txRef = doc(collection(db, "transactions"));
-        await setDoc(txRef, tx);
-      }
-
       // Reload data
       await loadUserData(fbUser);
       return { success: true };
@@ -394,6 +335,58 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         full_name: newName,
       });
       setUser((prev) => (prev ? { ...prev, name: newName } : prev));
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  };
+
+  // ── Save Balance (first-time setup) ──────────────────────────
+  const saveBalance = async (
+    liquidAmount: number,
+    accountAmount: number
+  ): Promise<{ success: boolean; error?: string }> => {
+    const fbUser = auth.currentUser;
+    if (!fbUser) {
+      return { success: false, error: "No active session" };
+    }
+
+    const totalAmount = liquidAmount + accountAmount;
+
+    try {
+      await setDoc(doc(db, "balances", fbUser.uid), {
+        liquid_amount: liquidAmount,
+        account_amount: accountAmount,
+        updated_at: serverTimestamp(),
+      });
+
+      // Create initial wallet setup transaction
+      const todayStr = new Date().toISOString().split("T")[0];
+      const txRef = doc(collection(db, "transactions"));
+      await setDoc(txRef, {
+        user_id: fbUser.uid,
+        type: "income_topup",
+        bucket: "liquid",
+        amount: totalAmount,
+        date: todayStr,
+        day_label: 1,
+        name: "Wallet Setup Completed",
+        icon: "wallet",
+        icon_bg: "#2E680A",
+        note: "Initial balance setup",
+        currency: "₹",
+        created_at: serverTimestamp(),
+      });
+
+      setBalances({
+        userId: fbUser.uid,
+        liquidAmount,
+        accountAmount,
+      });
+
+      // Reload data from Firestore to get fresh transactions
+      await loadUserData(fbUser);
+
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message };
@@ -480,25 +473,35 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     amount: number,
     type: "income_salary" | "income_topup",
     bucket: BucketType,
-    note?: string
+    note?: string,
+    category?: string
   ) => {
     if (!user || !balances) return;
 
     const todayStr = new Date().toISOString().split("T")[0];
     const dayLabel = getDayLabel(user.startDate, todayStr);
 
+    const categoryName = category
+      ? category.charAt(0).toUpperCase() + category.slice(1).replace(/_/g, " ")
+      : type === "income_salary"
+      ? "Salary"
+      : "Top-up Wallet";
+    const bucketLabel = bucket === "liquid" ? "In Hand" : "Account";
+
     const txData = {
       user_id: user.id,
       type,
       bucket,
+      category: category || null,
       amount,
       date: todayStr,
       day_label: dayLabel,
       note,
-      name: type === "income_salary" ? "Salary Received" : "Top-up Wallet",
-      icon: type === "income_salary" ? "💰" : "💵",
-      icon_bg: type === "income_salary" ? "#153a24" : "#192a20",
-      currency: "USD",
+      name: categoryName,
+      icon: type === "income_salary" ? "salary" : "topup",
+      icon_bg: type === "income_salary" ? "#2E680A" : "#1a3a24",
+      currency: "₹",
+      bucket_label: bucketLabel,
       created_at: serverTimestamp(),
     };
 
@@ -526,13 +529,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         userId: user.id,
         type,
         bucket,
+        category: category as ExpenseCategory | undefined,
         amount,
         date: todayStr,
         dayLabel,
         note,
-        name: type === "income_salary" ? "Salary Received" : "Top-up Wallet",
-        icon: type === "income_salary" ? "💰" : "💵",
-        iconBg: type === "income_salary" ? "#153a24" : "#192a20",
+        name: categoryName,
+        icon: type === "income_salary" ? "salary" : "topup",
+        iconBg: type === "income_salary" ? "#2E680A" : "#1a3a24",
+        meta: bucketLabel,
       },
       ...prev,
     ]);
@@ -633,6 +638,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         login,
         createProfile,
         updateUsername,
+        saveBalance,
         logout,
         addExpense,
         addIncome,
@@ -660,6 +666,7 @@ function getCategoryIcon(category: ExpenseCategory): string {
     bills: "💡",
     shopping: "🛍️",
     entertainment: "🎬",
+    salary: "💼",
     other: "💸",
   };
   return icons[category] || "💸";

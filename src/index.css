@@ -97,6 +97,21 @@ html.light .bg-black\/50 { background-color: rgba(0,0,0,0.12) !important; }
 /* Shadows — softer in light mode */
 html.light .shadow-\[0_20px_40px_rgba\(0\,0\,0\,0\.4\)\] { box-shadow: 0 8px 24px rgba(0,0,0,0.08) !important; }
 html.light .shadow-\[0_24px_50px_-12px_rgba\(0\,0\,0\,0\.5\)\] { box-shadow: 0 12px 32px -8px rgba(0,0,0,0.1) !important; }
+
+/* ── Bottom nav active icon ─────────────────────────────── */
+.nav-icon-active {
+  background: linear-gradient(135deg, rgba(154,255,69,0.25) 0%, rgba(115,218,20,0.15) 50%, rgba(46,104,10,0.2) 100%);
+  border: 1px solid rgba(115,218,20,0.3);
+  color: #9AFF45;
+  box-shadow: 0 0 12px rgba(92,176,16,0.25);
+}
+
+html.light .nav-icon-active {
+  background: linear-gradient(135deg, rgba(46,104,10,0.14) 0%, rgba(92,176,16,0.1) 50%, rgba(46,104,10,0.18) 100%);
+  border: 1px solid rgba(46,104,10,0.35);
+  color: #2E680A;
+  box-shadow: 0 0 10px rgba(46,104,10,0.15);
+}
 html.light .shadow-\[0_14px_34px_-12px_rgba\(0\,0\,0\,0\.6\)\] { box-shadow: 0 8px 24px -8px rgba(0,0,0,0.08) !important; }
 html.light .shadow-\[0_20px_50px_-12px_rgba\(0\,0\,0\,0\.6\)\] { box-shadow: 0 8px 24px -8px rgba(0,0,0,0.08) !important; }
 

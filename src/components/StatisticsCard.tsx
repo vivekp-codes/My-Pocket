@@ -1,193 +1,363 @@
-import { useState } from "react";
-import { transactions } from "../data/transactions";
+import { useState, useMemo } from "react";
+import { motion } from "framer-motion";
+import {
+  ForkKnife,
+  Car,
+  Receipt,
+  ShoppingBag,
+  FilmStrip,
+  CurrencyDollar,
+  CreditCard,
+  PlusCircle,
+  ArrowsLeftRight,
+  Briefcase,
+  Heart,
+  ArrowLeft,
+  CaretLeft,
+  CaretRight,
+} from "phosphor-react";
+import { useStore } from "../context/StoreContext";
+import type { Transaction } from "../types/transaction";
+import type { ComponentType } from "react";
+
+// ── Phosphor Icons ─────────────────────────────────────────
+const iconMap: Record<string, ComponentType<{ size?: number; weight?: string }>> = {
+  food: ForkKnife,
+  travel: Car,
+  bills: Receipt,
+  shopping: ShoppingBag,
+  entertainment: FilmStrip,
+  other: CurrencyDollar,
+  salary: Briefcase,
+  with_love: Heart,
+  topup: PlusCircle,
+  transfer: ArrowsLeftRight,
+};
+
+const iconBgColors: Record<string, string> = {
+  food: "#2E680A",
+  travel: "#1a3a24",
+  bills: "#1c2a20",
+  shopping: "#2E680A",
+  entertainment: "#153a24",
+  other: "#1c2a20",
+  salary: "#2E680A",
+  with_love: "#8B2252",
+  topup: "#1a3a24",
+  transfer: "#1c2a20",
+};
+
+function getIcon(tx: Transaction) {
+  if (tx.icon && iconMap[tx.icon]) return iconMap[tx.icon];
+  if (tx.type === "income_salary") return iconMap.salary;
+  if (tx.type === "income_topup") return iconMap.topup;
+  return iconMap[tx.category || "other"] || iconMap.other;
+}
+
+function getIconBg(tx: Transaction) {
+  if (tx.icon && iconBgColors[tx.icon]) return iconBgColors[tx.icon];
+  if (tx.type === "income_salary") return iconBgColors.salary;
+  if (tx.type === "income_topup") return iconBgColors.topup;
+  return iconBgColors[tx.category || "other"] || "#1c2a20";
+}
 
 interface StatisticsCardProps {
   onBack?: () => void;
 }
 
-export default function StatisticsCard({ onBack }: StatisticsCardProps) {
-  const [activeToggle, setActiveToggle] = useState<"income" | "spend">("income");
-  const currentDate = "Thu, 13 April 2023";
+// ── Helpers ────────────────────────────────────────────────
+function getWeekRange(date: Date): { start: Date; end: Date; label: string } {
+  const d = new Date(date);
+  const day = d.getDay(); // 0=Sun
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
+  const start = new Date(d);
+  start.setDate(diff);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  const fmt = (dt: Date) =>
+    dt.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return { start, end, label: `${fmt(start)} – ${fmt(end)}` };
+}
 
-  // Filter transactions based on toggle
-  const filteredTxs = transactions.filter((tx) => {
-    if (activeToggle === "income") {
-      return tx.type === "income_salary" || tx.type === "income_topup";
-    } else {
-      return tx.type === "expense";
+function getMonthRange(date: Date): { start: Date; end: Date; label: string } {
+  const start = new Date(date.getFullYear(), date.getMonth(), 1);
+  const end = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+  const label = date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  return { start, end, label };
+}
+
+const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+export default function StatisticsCard({ onBack }: StatisticsCardProps) {
+  const { transactions } = useStore();
+  const [activeToggle, setActiveToggle] = useState<"income" | "spend">("income");
+  const [currentDate, setCurrentDate] = useState(new Date());
+
+  const weekRange = useMemo(() => getWeekRange(currentDate), [currentDate]);
+  const monthRange = useMemo(() => getMonthRange(currentDate), [currentDate]);
+
+  // ── Monthly totals ──────────────────────────────────────
+  const monthlyCredits = useMemo(
+    () =>
+      transactions
+        .filter(
+          (tx) =>
+            (tx.type === "income_salary" || tx.type === "income_topup") &&
+            new Date(tx.date) >= monthRange.start &&
+            new Date(tx.date) <= monthRange.end
+        )
+        .reduce((sum, tx) => sum + tx.amount, 0),
+    [transactions, monthRange]
+  );
+
+  const monthlyDebits = useMemo(
+    () =>
+      transactions
+        .filter(
+          (tx) =>
+            tx.type === "expense" &&
+            new Date(tx.date) >= monthRange.start &&
+            new Date(tx.date) <= monthRange.end
+        )
+        .reduce((sum, tx) => sum + tx.amount, 0),
+    [transactions, monthRange]
+  );
+
+  // ── Weekly daily data ───────────────────────────────────
+  const weekDailyData = useMemo(() => {
+    const days: { label: string; credit: number; debit: number }[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekRange.start);
+      d.setDate(weekRange.start.getDate() + i);
+      const dateStr = d.toISOString().split("T")[0];
+      const credit = transactions
+        .filter(
+          (tx) =>
+            (tx.type === "income_salary" || tx.type === "income_topup") && tx.date === dateStr
+        )
+        .reduce((s, tx) => s + tx.amount, 0);
+      const debit = transactions
+        .filter((tx) => tx.type === "expense" && tx.date === dateStr)
+        .reduce((s, tx) => s + tx.amount, 0);
+      days.push({ label: DAY_NAMES[i], credit, debit });
     }
-  });
+    return days;
+  }, [transactions, weekRange]);
+
+  const maxDayVal = Math.max(...weekDailyData.map((d) => Math.max(d.credit, d.debit)), 1);
+
+  // ── Filtered transaction list ───────────────────────────
+  const filteredTxs = useMemo(
+    () =>
+      transactions
+        .filter((tx) => {
+          if (activeToggle === "income") return tx.type === "income_salary" || tx.type === "income_topup";
+          return tx.type === "expense";
+        })
+        .sort((a, b) => b.date.localeCompare(a.date)),
+    [transactions, activeToggle]
+  );
+
+  const navigateWeek = (dir: number) => {
+    const next = new Date(currentDate);
+    next.setDate(next.getDate() + dir * 7);
+    setCurrentDate(next);
+  };
+
+  const totalBalance = monthlyCredits - monthlyDebits;
 
   return (
-    <div className="px-5 pt-4">
+    <div className="px-5 pt-4 h-full overflow-y-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <button
           onClick={onBack}
           className="w-11 h-11 rounded-full bg-surface border border-stroke flex items-center justify-center text-text hover:bg-stroke active:scale-95 transition-all"
         >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
+          <ArrowLeft size={20} />
         </button>
         <span className="font-display font-bold text-lg text-text">Statistic</span>
-        <div className="w-11" /> {/* spacer */}
+        <div className="w-11" />
       </div>
 
-      {/* Date Switcher */}
-      <div className="flex items-center justify-between bg-cardBg border border-white/[0.03] rounded-full p-1.5 mb-6 max-w-xs mx-auto">
-        <button className="w-8 h-8 rounded-full flex items-center justify-center text-textFaint hover:text-text hover:bg-surface">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <span className="text-[12.5px] font-semibold text-text">{currentDate}</span>
-        <button className="w-8 h-8 rounded-full flex items-center justify-center text-textFaint hover:text-text hover:bg-surface">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-      </div>
-
-      {/* Current Balance Overview */}
-      <div className="text-center mb-6">
-        <div className="font-display font-bold text-[34px] text-text leading-none tracking-tight">
-          $ 231,560.00
-        </div>
-        <div className="text-xs text-textDim/50 mt-1 font-semibold uppercase tracking-wider">Current Balance</div>
-      </div>
-
-      {/* Chart Area */}
-      <div className="relative w-full h-[180px] bg-cardBg/30 border border-white/[0.02] rounded-[24px] p-4 mb-6 select-none overflow-hidden">
-        {/* Tooltip Overlay */}
-        <div
-          className="absolute z-20 pointer-events-none"
-          style={{
-            left: "70.3%", // aligned with Thursday point x=225 on 320 width viewbox
-            top: "22%", // aligned with y=30
-            transform: "translate(-50%, -100%) translateY(-10px)",
-          }}
+      {/* Week Navigator */}
+      <div className="flex items-center justify-between bg-cardBg border border-stroke rounded-full p-1.5 mb-5 max-w-xs mx-auto">
+        <button
+          onClick={() => navigateWeek(-1)}
+          className="w-8 h-8 rounded-full flex items-center justify-center text-textDim hover:text-text hover:bg-surface transition-all"
         >
-          <div className="bg-[#bdff80] text-bg text-[10.5px] font-bold px-2 py-1 rounded-lg shadow-lg relative whitespace-nowrap">
-            +$3,212 Thu, Apr 2023
-            <div className="absolute bottom-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#bdff80] rotate-45" />
+          <CaretLeft size={14} />
+        </button>
+        <span className="text-[12px] font-semibold text-text">{weekRange.label}</span>
+        <button
+          onClick={() => navigateWeek(1)}
+          className="w-8 h-8 rounded-full flex items-center justify-center text-textDim hover:text-text hover:bg-surface transition-all"
+        >
+          <CaretRight size={14} />
+        </button>
+      </div>
+
+      {/* Month Label */}
+      <div className="text-center mb-4">
+        <div className="text-[11px] font-bold text-textDim/40 uppercase tracking-wider">
+          {monthRange.label}
+        </div>
+      </div>
+
+      {/* Monthly Totals */}
+      <div className="grid grid-cols-3 gap-2.5 mb-5">
+        <div className="bg-[#5CB010]/8 border border-[#5CB010]/15 rounded-[18px] px-3 py-3 text-center">
+          <div className="text-[10px] font-bold text-[#5CB010]/70 uppercase tracking-wider">Credit</div>
+          <div className="font-display font-bold text-[16px] text-[#5CB010] mt-1">
+            ₹ {monthlyCredits.toLocaleString("en-IN")}
           </div>
         </div>
-
-        {/* SVG Bezier Chart */}
-        <svg viewBox="0 0 320 160" width="100%" height="100%" className="overflow-visible">
-          <defs>
-            {/* Horizontal Grid lines */}
-            <pattern id="grid" width="320" height="30" patternUnits="userSpaceOnUse">
-              <line x1="0" y1="0" x2="320" y2="0" stroke="rgba(255,255,255,0.03)" strokeWidth="1" strokeDasharray="4 4" />
-            </pattern>
-            {/* Shaded Area Under Line */}
-            <linearGradient id="chart-fill-grad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#bdff80" stopOpacity="0.22" />
-              <stop offset="100%" stopColor="#bdff80" stopOpacity="0.0" />
-            </linearGradient>
-            {/* Thursday Column Highlight Gradient */}
-            <linearGradient id="col-grad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#bdff80" stopOpacity="0.14" />
-              <stop offset="100%" stopColor="#bdff80" stopOpacity="0.0" />
-            </linearGradient>
-          </defs>
-
-          {/* Grid lines */}
-          <rect width="320" height="150" fill="url(#grid)" opacity="0.8" />
-
-          {/* Thursday Highlight Column */}
-          <rect x="210" y="15" width="30" height="135" fill="url(#col-grad)" rx="6" />
-
-          {/* Gradient Fill under Line */}
-          <path
-            d="M 30 120 C 62.5 95, 62.5 70, 95 70 C 127.5 70, 127.5 95, 160 95 C 192.5 95, 192.5 30, 225 30 C 257.5 30, 257.5 85, 290 85 L 290 150 L 30 150 Z"
-            fill="url(#chart-fill-grad)"
-          />
-
-          {/* Smooth Bezier Curve Line */}
-          <path
-            d="M 30 120 C 62.5 95, 62.5 70, 95 70 C 127.5 70, 127.5 95, 160 95 C 192.5 95, 192.5 30, 225 30 C 257.5 30, 257.5 85, 290 85"
-            fill="none"
-            stroke="#bdff80"
-            strokeWidth="3.5"
-            strokeLinecap="round"
-          />
-
-          {/* Active Highlight Points */}
-          <circle cx="225" cy="30" r="5" fill="#bdff80" />
-          <circle cx="225" cy="30" r="9" stroke="#bdff80" strokeWidth="2" fill="none" className="animate-ping origin-center" style={{ animationDuration: '3s' }} />
-
-          {/* Other Data Points */}
-          <circle cx="30" cy="120" r="3.5" fill="#182a20" stroke="#bdff80" strokeWidth="2" />
-          <circle cx="95" cy="70" r="3.5" fill="#182a20" stroke="#bdff80" strokeWidth="2" />
-          <circle cx="160" cy="95" r="3.5" fill="#182a20" stroke="#bdff80" strokeWidth="2" />
-          <circle cx="290" cy="85" r="3.5" fill="#182a20" stroke="#bdff80" strokeWidth="2" />
-        </svg>
-
-        {/* X-Axis Labels */}
-        <div className="flex justify-between px-3 text-[10px] font-bold text-textDim/50 mt-1">
-          <span>Mon</span>
-          <span>Tue</span>
-          <span>Wed</span>
-          <span className="text-[#bdff80]">Thu</span>
-          <span>Fri</span>
+        <div className="bg-[#EF4444]/8 border border-[#EF4444]/15 rounded-[18px] px-3 py-3 text-center">
+          <div className="text-[10px] font-bold text-[#EF4444]/70 uppercase tracking-wider">Debit</div>
+          <div className="font-display font-bold text-[16px] text-[#EF4444] mt-1">
+            ₹ {monthlyDebits.toLocaleString("en-IN")}
+          </div>
+        </div>
+        <div className="bg-cardBg border border-stroke rounded-[18px] px-3 py-3 text-center">
+          <div className="text-[10px] font-bold text-textDim/40 uppercase tracking-wider">Net</div>
+          <div
+            className="font-display font-bold text-[16px] mt-1"
+            style={{ color: totalBalance >= 0 ? "#5CB010" : "#EF4444" }}
+          >
+            ₹ {totalBalance.toLocaleString("en-IN")}
+          </div>
         </div>
       </div>
 
-      {/* Switcher Toggle Pill */}
-      <div className="flex bg-cardBg border border-white/[0.03] rounded-full p-1 mb-6">
+      {/* Weekly Bar Chart */}
+      <div className="bg-cardBg border border-stroke rounded-[20px] p-4 mb-5">
+        <div className="text-[10px] font-bold text-textDim/40 uppercase tracking-wider mb-3">
+          This Week
+        </div>
+        <div className="flex items-end justify-between gap-1.5 h-[120px]">
+          {weekDailyData.map((day, i) => {
+            const creditH = maxDayVal > 0 ? (day.credit / maxDayVal) * 100 : 0;
+            const debitH = maxDayVal > 0 ? (day.debit / maxDayVal) * 100 : 0;
+            const isToday =
+              new Date().toISOString().split("T")[0] ===
+              new Date(weekRange.start.getTime() + i * 86400000).toISOString().split("T")[0];
+            return (
+              <div key={day.label} className="flex-1 flex flex-col items-center gap-1">
+                {/* Bars */}
+                <div className="flex items-end gap-[2px] h-[90px] w-full justify-center">
+                  <motion.div
+                    initial={{ height: 0 }}
+                    animate={{ height: `${Math.max(creditH, 2)}%` }}
+                    transition={{ delay: i * 0.05, duration: 0.4 }}
+                    className="w-[45%] max-w-[14px] rounded-t-md bg-[#5CB010]"
+                  />
+                  <motion.div
+                    initial={{ height: 0 }}
+                    animate={{ height: `${Math.max(debitH, 2)}%` }}
+                    transition={{ delay: i * 0.05 + 0.1, duration: 0.4 }}
+                    className="w-[45%] max-w-[14px] rounded-t-md bg-[#EF4444]"
+                  />
+                </div>
+                {/* Label */}
+                <span
+                  className={`text-[9px] font-bold ${isToday ? "text-[#5CB010]" : "text-textDim/50"}`}
+                >
+                  {day.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        {/* Legend */}
+        <div className="flex items-center justify-center gap-4 mt-3">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-[#5CB010]" />
+            <span className="text-[9px] font-semibold text-textDim/50">Credit</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-2 rounded-full bg-[#EF4444]" />
+            <span className="text-[9px] font-semibold text-textDim/50">Debit</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Toggle: Credit / Debit */}
+      <div className="flex bg-cardBg border border-stroke rounded-full p-1 mb-5">
         <button
           onClick={() => setActiveToggle("income")}
-          className={`flex-1 py-2.5 rounded-full font-display font-bold text-sm transition-all ${
-            activeToggle === "income" ? "bg-[#bdff80] text-bg shadow-sm" : "text-textDim hover:text-text"
+          className={`flex-1 py-2.5 rounded-full font-display font-bold text-[13px] transition-all ${
+            activeToggle === "income"
+              ? "bg-[#5CB010] text-[#050805] shadow-sm"
+              : "text-textDim hover:text-text"
           }`}
         >
-          Income
+          Credit
         </button>
         <button
           onClick={() => setActiveToggle("spend")}
-          className={`flex-1 py-2.5 rounded-full font-display font-bold text-sm transition-all ${
-            activeToggle === "spend" ? "bg-[#bdff80] text-bg shadow-sm" : "text-textDim hover:text-text"
+          className={`flex-1 py-2.5 rounded-full font-display font-bold text-[13px] transition-all ${
+            activeToggle === "spend"
+              ? "bg-[#EF4444] text-white shadow-sm"
+              : "text-textDim hover:text-text"
           }`}
         >
-          Spend
+          Debit
         </button>
       </div>
 
-      {/* Dynamic Filtered List */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <span className="font-display font-bold text-base text-text">
-            {activeToggle === "income" ? "Income History" : "Spend History"}
+      {/* Transaction List */}
+      <div className="pb-6">
+        <div className="flex items-center justify-between mb-3">
+          <span className="font-display font-bold text-[15px] text-text">
+            {activeToggle === "income" ? "Credit History" : "Debit History"}
           </span>
-          <span className="text-xs font-semibold text-[#bdff80] cursor-pointer hover:underline">See all</span>
+          <span className="text-[11px] font-semibold text-textDim/40">
+            {filteredTxs.length} items
+          </span>
         </div>
 
-        <div className="flex flex-col gap-2.5 pb-6">
+        <div className="flex flex-col gap-2">
           {filteredTxs.length > 0 ? (
-            filteredTxs.map((tx) => (
-              <div
-                key={tx.id}
-                className="flex items-center gap-3.5 px-4 py-3 bg-cardBg border border-white/[0.03] rounded-[22px] shadow-[0_4px_12px_rgba(0,0,0,0.1)]"
-              >
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center font-display font-bold text-xs text-[#eafff0]"
-                  style={{ background: tx.iconBg || "#1c2a20" }}
+            filteredTxs.map((tx, i) => {
+              const Icon = getIcon(tx);
+              const isIncome = tx.type === "income_salary" || tx.type === "income_topup";
+              return (
+                <motion.div
+                  key={tx.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.03 }}
+                  className="flex items-center gap-3 px-3.5 py-3 bg-cardBg border border-stroke rounded-[18px]"
                 >
-                  {tx.icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-text tracking-wide">{tx.name}</div>
-                  <div className="text-[11px] text-textDim/60 mt-0.5">{tx.meta}</div>
-                </div>
-                <div className="font-display font-bold text-sm text-text">
-                  {Math.abs(tx.amount).toLocaleString("en-US")} {tx.currency || "USD"}
-                </div>
-              </div>
-            ))
+                  <div
+                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: getIconBg(tx) }}
+                  >
+                    <Icon size={16} weight="light" color="white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-semibold text-text truncate">{tx.name}</div>
+                    <div className="text-[10px] text-textDim/50 mt-0.5">
+                      {tx.date &&
+                        new Date(tx.date + "T00:00:00").toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                    </div>
+                  </div>
+                  <div
+                    className="font-display font-bold text-[13px]"
+                    style={{ color: isIncome ? "#5CB010" : "#EF4444" }}
+                  >
+                    {isIncome ? "+" : "-"}₹ {tx.amount.toLocaleString("en-IN")}
+                  </div>
+                </motion.div>
+              );
+            })
           ) : (
-            <div className="text-center py-6 text-xs text-textDim/40">No entries recorded</div>
+            <div className="text-center py-8 text-[12px] text-textDim/40">No entries yet</div>
           )}
         </div>
       </div>

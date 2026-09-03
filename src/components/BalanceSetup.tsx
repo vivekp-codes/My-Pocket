@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useRef } from "react";
+import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
 import { Wallet, CreditCard, CurrencyCircleDollar, ArrowRight, Check, X } from "phosphor-react";
 import { useStore } from "../context/StoreContext";
 
@@ -17,6 +17,9 @@ export default function BalanceSetup({ onComplete }: BalanceSetupProps) {
   const [liquidAmount, setLiquidAmount] = useState("");
   const [accountAmount, setAccountAmount] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const sliderX = useMotionValue(0);
+  const sliderLabelOpacity = useTransform(sliderX, [0, 80], [1, 0]);
 
   const formatNumber = (val: string) => {
     const num = val.replace(/[^0-9]/g, "");
@@ -49,7 +52,8 @@ export default function BalanceSetup({ onComplete }: BalanceSetupProps) {
     const result = await saveBalance(liquid, account);
     setLoading(false);
     if (result.success) {
-      onComplete();
+      setShowSuccess(true);
+      setTimeout(() => onComplete(), 2000);
     }
   };
 
@@ -212,10 +216,82 @@ export default function BalanceSetup({ onComplete }: BalanceSetupProps) {
                 Continue
               </button>
             </motion.div>
+          )}            {/* ── Success State ──────────────────────────── */}
+          {showSuccess && (
+            <motion.div
+              key="success"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ type: "spring", stiffness: 200, damping: 18 }}
+              className="flex flex-col items-center justify-center py-10 relative"
+            >
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: [0, 2.5], opacity: [0.3, 0] }}
+                transition={{ duration: 1, ease: "easeOut" }}
+                className="absolute w-24 h-24 rounded-full border-2 border-[#5CB010]/30"
+              />
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: [0, 3.5], opacity: [0.2, 0] }}
+                transition={{ duration: 1.2, ease: "easeOut", delay: 0.15 }}
+                className="absolute w-24 h-24 rounded-full border border-[#5CB010]/20"
+              />
+              <motion.div
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.1 }}
+                className="w-20 h-20 rounded-full bg-gradient-to-br from-[#73DA14] via-[#5CB010] to-[#2E680A] flex items-center justify-center mb-5 shadow-[0_0_30px_rgba(92,176,16,0.3)]"
+              >
+                <motion.div
+                  initial={{ pathLength: 0, opacity: 0 }}
+                  animate={{ pathLength: 1, opacity: 1 }}
+                  transition={{ delay: 0.4, duration: 0.4 }}
+                >
+                  <Check size={36} weight="bold" color="#050805" />
+                </motion.div>
+              </motion.div>
+              <motion.h3
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="font-display font-bold text-xl text-text"
+              >
+                Wallet Ready!
+              </motion.h3>
+              <motion.p
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.65 }}
+                className="text-[13px] text-textDim/60 mt-1.5"
+              >
+                Your balances have been saved
+              </motion.p>
+              {[...Array(6)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{
+                    scale: [0, 1, 0],
+                    opacity: [0, 0.6, 0],
+                    x: [0, (i % 2 === 0 ? 1 : -1) * (30 + i * 15)],
+                    y: [0, -20 - i * 12],
+                  }}
+                  transition={{ delay: 0.3 + i * 0.08, duration: 0.8 }}
+                  className="absolute w-2 h-2 rounded-full"
+                  style={{
+                    background: i % 3 === 0 ? "#73DA14" : i % 3 === 1 ? "#F59E0B" : "#5CB010",
+                    top: "40%",
+                    left: "50%",
+                  }}
+                />
+              ))}
+            </motion.div>
           )}
 
           {/* ── Step: Confirm ─────────────────────────────── */}
-          {step === "confirm" && (
+          {!showSuccess && step === "confirm" && (
             <motion.div
               key="confirm"
               initial={{ opacity: 0, x: 20 }}
@@ -268,15 +344,29 @@ export default function BalanceSetup({ onComplete }: BalanceSetupProps) {
                 </div>
               </div>
 
-              <button
-                onClick={handleSave}
-                disabled={loading}
-                className="w-full h-[56px] bg-cardBg border border-stroke rounded-full p-1.5 flex items-center justify-between mt-2 group hover:border-[#5CB010]/30 transition-all relative overflow-hidden"
-              >
+              <div className="w-full h-[62px] bg-cardBg border border-stroke rounded-full p-1.5 relative mt-2 overflow-hidden flex items-center">
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <motion.span
+                    className="font-display font-bold text-[14px] select-none"
+                    style={{ opacity: sliderLabelOpacity, color: "var(--text)" }}
+                  >
+                    {loading ? "Saving..." : "Slide to Confirm"}
+                  </motion.span>
+                </div>
                 <motion.div
-                  className="w-[44px] h-[44px] rounded-full bg-[#5CB010] flex items-center justify-center text-[#050805] shadow-md"
-                  animate={!loading ? { x: [0, 4, 0] } : {}}
-                  transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                  drag="x"
+                  dragConstraints={{ left: 0, right: 200 }}
+                  dragElastic={0.05}
+                  onDragEnd={(_e, info) => {
+                    if (info.offset.x > 140) {
+                      animate(sliderX, 220, { duration: 0.2 });
+                      handleSave();
+                    } else {
+                      animate(sliderX, 0, { type: "spring", stiffness: 400, damping: 30 });
+                    }
+                  }}
+                  style={{ x: sliderX }}
+                  className="w-[50px] h-[50px] rounded-full bg-gradient-to-br from-[#73DA14] via-[#5CB010] to-[#2E680A] flex items-center justify-center text-[#050805] shadow-[0_2px_12px_rgba(92,176,16,0.35)] cursor-grab active:cursor-grabbing relative z-10 shrink-0"
                 >
                   {loading ? (
                     <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
@@ -287,18 +377,19 @@ export default function BalanceSetup({ onComplete }: BalanceSetupProps) {
                     <ArrowRight size={20} weight="bold" />
                   )}
                 </motion.div>
-                <span className="font-display font-bold text-[14px] text-text/80 pr-2 select-none">
-                  {loading ? "Saving..." : "Get Started"}
-                </span>
-                <div className="flex gap-0.5 text-textFaint/40 group-hover:text-[#5CB010]/50 pr-4 transition-colors">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} className="-ml-1">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                  </svg>
+                <div className="absolute right-5 top-1/2 -translate-y-1/2 flex gap-0.5 pointer-events-none">
+                  <motion.div animate={{ opacity: [0.2, 0.5, 0.2] }} transition={{ duration: 1.2, repeat: Infinity }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--textFaint)" strokeWidth={2.5} className="opacity-30">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </motion.div>
+                  <motion.div animate={{ opacity: [0.2, 0.5, 0.2] }} transition={{ duration: 1.2, repeat: Infinity, delay: 0.15 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--textFaint)" strokeWidth={2.5} className="opacity-30 -ml-1.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </motion.div>
                 </div>
-              </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

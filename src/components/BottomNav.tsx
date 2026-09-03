@@ -27,13 +27,12 @@ const navIcons = [
     ),
   },
   {
-    id: "people",
+    id: "calendar",
     svg: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="9" cy="8" r="3.5" />
-        <path d="M2.5 20c1-3.5 3.7-5 6.5-5s5.5 1.5 6.5 5" />
-        <circle cx="18" cy="8" r="2.5" />
-        <path d="M16 13.2c2 .2 4 1.4 4.7 3.8" />
+        <rect x="3" y="4" width="18" height="18" rx="3" />
+        <path d="M16 2v4M8 2v4M3 10h18" />
+        <rect x="7" y="14" width="3" height="3" rx="0.5" fill="currentColor" stroke="none" />
       </svg>
     ),
   },

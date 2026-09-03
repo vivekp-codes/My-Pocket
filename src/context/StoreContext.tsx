@@ -408,11 +408,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     date: string,
     note?: string
   ) => {
-    if (!user || !balances) return;
+    if (!user) return;
 
     const dayLabel = getDayLabel(user.startDate, date);
 
-    const txData = {
+    const txData: Record<string, any> = {
       user_id: user.id,
       type: "expense",
       bucket: "liquid",
@@ -420,31 +420,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       amount,
       date,
       day_label: dayLabel,
-      note,
       name:
         category.charAt(0).toUpperCase() +
-        category.slice(1) +
+        category.slice(1).replace(/_/g, " ") +
         (note ? ` (${note})` : ""),
       icon: getCategoryIcon(category),
       icon_bg: "#1c2a20",
-      currency: "USD",
+      currency: "₹",
       created_at: serverTimestamp(),
     };
+    if (note) txData.note = note;
 
     const txRef = doc(collection(db, "transactions"));
     await setDoc(txRef, txData);
 
-    const newLiquid = Math.max(0, balances.liquidAmount - amount);
-    await setDoc(
-      doc(db, "balances", user.id),
-      {
-        liquid_amount: newLiquid,
-        updated_at: serverTimestamp(),
-      },
-      { merge: true }
-    );
-
-    setBalances({ ...balances, liquidAmount: newLiquid });
+    // Update balance if it exists
+    if (balances) {
+      const newLiquid = Math.max(0, balances.liquidAmount - amount);
+      await setDoc(
+        doc(db, "balances", user.id),
+        {
+          liquid_amount: newLiquid,
+          updated_at: serverTimestamp(),
+        },
+        { merge: true }
+      );
+      setBalances({ ...balances, liquidAmount: newLiquid });
+    }
 
     setTransactions((prev) => [
       {
@@ -459,7 +461,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         note,
         name:
           category.charAt(0).toUpperCase() +
-          category.slice(1) +
+          category.slice(1).replace(/_/g, " ") +
           (note ? ` (${note})` : ""),
         icon: getCategoryIcon(category),
         iconBg: "#1c2a20",
@@ -476,7 +478,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     note?: string,
     category?: string
   ) => {
-    if (!user || !balances) return;
+    if (!user) return;
 
     const todayStr = new Date().toISOString().split("T")[0];
     const dayLabel = getDayLabel(user.startDate, todayStr);
@@ -488,7 +490,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       : "Top-up Wallet";
     const bucketLabel = bucket === "liquid" ? "In Hand" : "Account";
 
-    const txData = {
+    const txData: Record<string, any> = {
       user_id: user.id,
       type,
       bucket,
@@ -496,33 +498,36 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       amount,
       date: todayStr,
       day_label: dayLabel,
-      note,
       name: categoryName,
-      icon: type === "income_salary" ? "salary" : "topup",
-      icon_bg: type === "income_salary" ? "#2E680A" : "#1a3a24",
+      icon: category === "with_love" ? "with_love" : type === "income_salary" ? "salary" : "topup",
+      icon_bg: category === "with_love" ? "#8B2252" : type === "income_salary" ? "#2E680A" : "#1a3a24",
       currency: "₹",
       bucket_label: bucketLabel,
       created_at: serverTimestamp(),
     };
+    if (note) txData.note = note;
 
     const txRef = doc(collection(db, "transactions"));
     await setDoc(txRef, txData);
 
-    const updated = { ...balances };
-    if (bucket === "liquid") updated.liquidAmount += amount;
-    else updated.accountAmount += amount;
+    // Update balance if it exists
+    if (balances) {
+      const updated = { ...balances };
+      if (bucket === "liquid") updated.liquidAmount += amount;
+      else updated.accountAmount += amount;
 
-    await setDoc(
-      doc(db, "balances", user.id),
-      {
-        liquid_amount: updated.liquidAmount,
-        account_amount: updated.accountAmount,
-        updated_at: serverTimestamp(),
-      },
-      { merge: true }
-    );
+      await setDoc(
+        doc(db, "balances", user.id),
+        {
+          liquid_amount: updated.liquidAmount,
+          account_amount: updated.accountAmount,
+          updated_at: serverTimestamp(),
+        },
+        { merge: true }
+      );
 
-    setBalances(updated);
+      setBalances(updated);
+    }
     setTransactions((prev) => [
       {
         id: txRef.id,
@@ -535,8 +540,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         dayLabel,
         note,
         name: categoryName,
-        icon: type === "income_salary" ? "salary" : "topup",
-        iconBg: type === "income_salary" ? "#2E680A" : "#1a3a24",
+        icon: category === "with_love" ? "with_love" : type === "income_salary" ? "salary" : "topup",
+        iconBg: category === "with_love" ? "#8B2252" : type === "income_salary" ? "#2E680A" : "#1a3a24",
         meta: bucketLabel,
       },
       ...prev,
@@ -572,7 +577,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       name: `Transfer: ${fromBucket === "liquid" ? "Liquid → Account" : "Account → Liquid"}`,
       icon: "🔄",
       icon_bg: "#122a1f",
-      currency: "USD",
+      currency: "₹",
       created_at: serverTimestamp(),
     };
 

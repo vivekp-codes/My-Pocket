@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useMemo, useRef, useEffect } from "react";
+import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
 import {
   ArrowLeft,
   ArrowRight,
@@ -48,6 +48,15 @@ export default function SendMoney({ onBack, onSendSuccess }: SendMoneyProps) {
   const [bucket, setBucket] = useState<"liquid" | "account">("liquid");
   const [loading, setLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const sliderX = useMotionValue(0);
+  const sliderLabelOpacity = useTransform(sliderX, [0, 80], [1, 0]);
+  const sliderContainerRef = useRef<HTMLDivElement>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   // ── Filter categories based on transaction type ──────────
   const categories = useMemo(() => {
@@ -56,8 +65,8 @@ export default function SendMoney({ onBack, onSendSuccess }: SendMoneyProps) {
       return allCategories.filter((c) => c.id !== "salary" && c.id !== "with_love");
     }
     if (txType === "income") {
-      // Get Money: salary + other
-      return allCategories.filter((c) => c.id === "salary" || c.id === "other");
+      // Get Money: salary + other + with_love (return received)
+      return allCategories.filter((c) => c.id === "salary" || c.id === "other" || c.id === "with_love");
     }
     // Returnable: only With Love
     return allCategories.filter((c) => c.id === "with_love");
@@ -82,19 +91,14 @@ export default function SendMoney({ onBack, onSendSuccess }: SendMoneyProps) {
         const incomeType = selectedCategory === "salary" ? "income_salary" : "income_topup";
         await addIncome(parsedAmount, incomeType, bucket, note || undefined, selectedCategory);
       } else {
-        // Returnable
         await addExpense(parsedAmount, (selectedCategory as any) || "with_love", today, note || undefined);
       }
-
-      setShowSuccess(true);
-      setTimeout(() => {
-        setShowSuccess(false);
-        if (onBack) onBack();
-      }, 1500);
     } catch (err) {
       console.error("Failed to save transaction:", err);
     }
+
     setLoading(false);
+    setShowSuccess(true);
   };
 
   // Find selected cat from ALL categories (not filtered)
@@ -115,22 +119,79 @@ export default function SendMoney({ onBack, onSendSuccess }: SendMoneyProps) {
         <div className="w-11" />
       </div>
 
-      <AnimatePresence mode="wait">
-        {showSuccess ? (
+      <AnimatePresence mode="wait">            {showSuccess ? (
           <motion.div
             key="success"
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex flex-col items-center justify-center py-16 bg-cardBg border border-stroke rounded-[28px]"
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ type: "spring", stiffness: 200, damping: 18 }}
+            className="flex flex-col items-center justify-center py-14 relative"
           >
-            <div className="w-16 h-16 rounded-full bg-[#5CB010]/15 flex items-center justify-center mb-4">
-              <Check size={32} weight="bold" color="#5CB010" />
-            </div>
-            <h3 className="font-display font-bold text-lg text-text">Added!</h3>
-            <p className="text-xs text-textDim/70 mt-1">
-              ₹{parseFloat(amount.replace(/,/g, "") || "0").toLocaleString("en-IN")} saved
-            </p>
+
+            {/* Checkmark circle */}
+            <motion.div
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.1 }}
+              className="w-20 h-20 rounded-full bg-gradient-to-br from-[#73DA14] via-[#5CB010] to-[#2E680A] flex items-center justify-center mb-5"
+            >
+              <motion.div
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 1 }}
+                transition={{ delay: 0.4, duration: 0.4 }}
+              >
+                <Check size={36} weight="bold" color="#050805" />
+              </motion.div>
+            </motion.div>
+            <motion.h3
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="font-display font-bold text-xl text-text"
+            >
+              Added Successfully!
+            </motion.h3>
+            <motion.p
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.65 }}
+              className="text-[13px] text-textDim/60 mt-1.5"
+            >
+              ₹{parseFloat(amount.replace(/,/g, "") || "0").toLocaleString("en-IN")} has been recorded
+            </motion.p>
+            {/* Animated confetti dots */}
+            {[...Array(6)].map((_, i) => (
+              <motion.div
+                key={i}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{
+                  scale: [0, 1, 0],
+                  opacity: [0, 0.6, 0],
+                  x: [0, (i % 2 === 0 ? 1 : -1) * (30 + i * 15)],
+                  y: [0, -20 - i * 12],
+                }}
+                transition={{ delay: 0.3 + i * 0.08, duration: 0.8 }}
+                className="absolute w-2 h-2 rounded-full"
+                style={{
+                  background: i % 3 === 0 ? "#73DA14" : i % 3 === 1 ? "#F59E0B" : "#5CB010",
+                  top: "42%",
+                  left: "50%",
+                }}
+              />
+            ))}
+            {/* Done Button */}
+            <motion.button
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+              onClick={() => {
+                if (onBack) onBack();
+              }}
+              className="mt-4 w-[70%] h-[44px] bg-gradient-to-r from-[#5CB010] to-[#2E680A] hover:from-[#5CB010]/90 hover:to-[#2E680A]/90 text-white rounded-full flex items-center justify-center font-display font-bold text-[13px] active:scale-95 transition-all shadow-[0_4px_16px_rgba(92,176,16,0.3)]"
+            >
+              Done
+            </motion.button>
           </motion.div>
         ) : (
           <motion.div
@@ -245,16 +306,43 @@ export default function SendMoney({ onBack, onSendSuccess }: SendMoneyProps) {
               </button>
             </div>
 
-            {/* Confirm Button */}
-            <button
-              onClick={handleSave}
-              disabled={!canSubmit || loading}
-              className="w-full h-[56px] bg-cardBg border border-stroke rounded-full p-1.5 flex items-center justify-between mt-2 group hover:border-[#5CB010]/30 transition-all relative overflow-hidden disabled:opacity-40"
+            {/* Swipe to Confirm */}
+            <div
+              ref={sliderContainerRef}
+              className={`w-full h-[62px] border rounded-full p-1.5 relative mt-2 overflow-hidden flex items-center transition-all ${
+                canSubmit && !loading
+                  ? "bg-cardBg border-stroke"
+                  : "bg-textFaint/5 border-textFaint/10 opacity-50"
+              }`}
             >
+              {/* Track label */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <motion.span
+                  className="font-display font-bold text-[14px] select-none"
+                  style={{ opacity: sliderLabelOpacity, color: "var(--textDim)" }}
+                >
+                  {loading ? "Saving..." : !canSubmit ? "Fill details above" : "Slide to Confirm"}
+                </motion.span>
+              </div>
+              {/* Draggable thumb */}
               <motion.div
-                className="w-[44px] h-[44px] rounded-full bg-[#5CB010] flex items-center justify-center text-[#050805] shadow-md"
-                animate={canSubmit && !loading ? { x: [0, 4, 0] } : {}}
-                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                drag={canSubmit && !loading ? "x" : false}
+                dragConstraints={{ left: 0, right: 200 }}
+                dragElastic={0.05}
+                onDragEnd={(_e, info) => {
+                  if (info.offset.x > 140) {
+                    animate(sliderX, 220, { duration: 0.2 });
+                    handleSave();
+                  } else {
+                    animate(sliderX, 0, { type: "spring", stiffness: 400, damping: 30 });
+                  }
+                }}
+                style={{ x: sliderX }}
+                className={`w-[50px] h-[50px] rounded-full flex items-center justify-center relative z-10 shrink-0 transition-all ${
+                  canSubmit && !loading
+                    ? "bg-gradient-to-br from-[#73DA14] via-[#5CB010] to-[#2E680A] text-[#050805] shadow-[0_2px_12px_rgba(92,176,16,0.35)] cursor-grab active:cursor-grabbing"
+                    : "bg-textFaint/20 text-textDim/40 cursor-not-allowed"
+                }`}
               >
                 {loading ? (
                   <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
@@ -265,18 +353,26 @@ export default function SendMoney({ onBack, onSendSuccess }: SendMoneyProps) {
                   <ArrowRight size={20} weight="bold" />
                 )}
               </motion.div>
-              <span className="font-display font-bold text-[14px] text-text/80 pr-2 select-none">
-                {loading ? "Saving..." : "Add Transaction"}
-              </span>
-              <div className="flex gap-0.5 text-textFaint/40 group-hover:text-[#5CB010]/50 pr-4 transition-colors">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} className="-ml-1">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
+              {/* Chevrons hint */}
+              <div className="absolute right-5 top-1/2 -translate-y-1/2 flex gap-0.5 pointer-events-none">
+                <motion.div
+                  animate={canSubmit && !loading ? { opacity: [0.2, 0.5, 0.2] } : {}}
+                  transition={{ duration: 1.2, repeat: Infinity }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--textFaint)" strokeWidth={2.5} className="opacity-30">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </motion.div>
+                <motion.div
+                  animate={canSubmit && !loading ? { opacity: [0.2, 0.5, 0.2] } : {}}
+                  transition={{ duration: 1.2, repeat: Infinity, delay: 0.15 }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--textFaint)" strokeWidth={2.5} className="opacity-30 -ml-1.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </motion.div>
               </div>
-            </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

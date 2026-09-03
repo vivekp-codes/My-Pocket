@@ -1,7 +1,11 @@
 import { motion } from "framer-motion";
 import { useStore } from "../context/StoreContext";
 
-export default function StatPills() {
+interface StatPillsProps {
+  onToReceiveClick?: () => void;
+}
+
+export default function StatPills({ onToReceiveClick }: StatPillsProps) {
   const { transactions } = useStore();
 
   // Calculate stats from actual transactions
@@ -13,14 +17,21 @@ export default function StatPills() {
     .filter((tx) => tx.type === "expense")
     .reduce((sum, tx) => sum + tx.amount, 0);
 
-  const toReceive = transactions
-    .filter((tx) => tx.type === "transfer" && tx.bucket === "account")
+  // To Receive = (money given away with love) - (money received back with love)
+  const givenWithLove = transactions
+    .filter((tx) => tx.category === "with_love" && tx.type === "expense")
     .reduce((sum, tx) => sum + tx.amount, 0);
 
+  const receivedBack = transactions
+    .filter((tx) => tx.category === "with_love" && (tx.type === "income_salary" || tx.type === "income_topup"))
+    .reduce((sum, tx) => sum + tx.amount, 0);
+
+  const toReceive = Math.max(0, givenWithLove - receivedBack);
+
   const stats = [
-    { label: "Credited", value: `₹${credited.toLocaleString("en-IN")}`, color: "#5CB010" },
-    { label: "Debited", value: `₹${debited.toLocaleString("en-IN")}`, color: "#ff7a6b" },
-    { label: "To Receive", value: `₹${toReceive.toLocaleString("en-IN")}`, color: "#F59E0B" },
+    { label: "Credited", value: `₹ ${credited.toLocaleString("en-IN")}`, color: "#5CB010", actionable: false },
+    { label: "Debited", value: `₹ ${debited.toLocaleString("en-IN")}`, color: "#ff7a6b", actionable: false },
+    { label: "To Receive", value: `₹ ${toReceive.toLocaleString("en-IN")}`, color: "#F59E0B", actionable: toReceive > 0 },
   ];
 
   return (
@@ -31,7 +42,13 @@ export default function StatPills() {
       className="flex gap-2.5 px-5 pt-4"
     >
       {stats.map((s) => (
-        <div key={s.label} className="flex-1 bg-surface border border-stroke rounded-[18px] px-3.5 py-3">
+        <div
+          key={s.label}
+          onClick={s.actionable ? onToReceiveClick : undefined}
+          className={`flex-1 bg-surface border border-stroke rounded-[18px] px-3.5 py-3 ${
+            s.actionable ? "cursor-pointer active:scale-95 transition-all hover:border-[#F59E0B]/30" : ""
+          }`}
+        >
           <div className="flex items-center gap-1.5 text-[11.5px] font-semibold text-textDim">
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: s.color }} />
             {s.label}

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import {
   ForkKnife,
@@ -58,7 +59,6 @@ const iconWeights: Record<string, "thin" | "light" | "regular" | "bold" | "fill"
 };
 
 function getIconComponent(tx: Transaction): ComponentType<{ size?: number; weight?: string }> {
-  // Use icon field from Firestore if available (salary, topup, etc.)
   if (tx.icon && iconMap[tx.icon]) return iconMap[tx.icon];
   if (tx.type === "income_salary") return iconMap.salary;
   if (tx.type === "income_topup") return iconMap.topup;
@@ -84,6 +84,7 @@ function getIconBg(tx: Transaction): string {
 
 function TransactionRow({ tx, delay }: { tx: Transaction; delay: number }) {
   const positive = tx.type === "income_salary" || tx.type === "income_topup";
+  const isReturnable = tx.category === "with_love";
   const IconComponent = getIconComponent(tx);
 
   return (
@@ -92,7 +93,12 @@ function TransactionRow({ tx, delay }: { tx: Transaction; delay: number }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay, ease: [0.2, 0.8, 0.2, 1] }}
       whileTap={{ scale: 0.98 }}
-      className="flex items-center gap-3.5 px-4 py-3.5 bg-cardBg border border-white/[0.03] rounded-[22px] mb-2.5 last:mb-0 shadow-[0_4px_12px_rgba(0,0,0,0.1)] cursor-pointer"
+      className="flex items-center gap-3.5 px-4 py-3.5 border border-white/[0.03] rounded-[22px] mb-2.5 last:mb-0 shadow-[0_4px_12px_rgba(0,0,0,0.1)] cursor-pointer"
+      style={{
+        background: positive
+          ? "linear-gradient(135deg, rgba(92,176,16,0.06) 0%, transparent 60%)"
+          : "linear-gradient(135deg, rgba(239,68,68,0.06) 0%, transparent 60%)",
+      }}
     >
       <div
         className="relative w-[44px] h-[44px] rounded-full flex items-center justify-center flex-shrink-0 text-white"
@@ -100,15 +106,15 @@ function TransactionRow({ tx, delay }: { tx: Transaction; delay: number }) {
       >
         <IconComponent size={20} weight={getIconWeight(tx)} color="white" />
         <span
-          className="absolute -bottom-0.5 -right-0.5 w-[16px] h-[16px] rounded-full flex items-center justify-center border-2 border-[#131f18]"
-          style={{ background: positive ? "#5CB010" : "#242f28" }}
+          className="absolute -bottom-0.5 -right-0.5 w-[16px] h-[16px] rounded-full flex items-center justify-center border-2 border-cardBg"
+          style={{ background: positive ? "#5CB010" : "#EF4444" }}
         >
           <svg
             width="8"
             height="8"
             viewBox="0 0 24 24"
             fill="none"
-            stroke={positive ? "#050805" : "#8fa39a"}
+            stroke={positive ? "#050805" : "#ffffff"}
             strokeWidth={4.5}
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -121,32 +127,49 @@ function TransactionRow({ tx, delay }: { tx: Transaction; delay: number }) {
       <div className="flex-1 min-w-0">
         <div className="text-[14.5px] font-semibold text-text tracking-wide">{tx.name}</div>
         <div className="text-xs text-textDim/65 mt-0.5 flex items-center gap-1.5">
-          {tx.meta && <span>{tx.meta}</span>}
+          {tx.date && (
+            <span className="capitalize">{new Date(tx.date + "T00:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+          )}
+          {tx.meta && <span>· {tx.meta}</span>}
           {tx.note && <span className="opacity-60">· {tx.note}</span>}
         </div>
       </div>
 
       <div
         className="font-display font-bold text-[14.5px] whitespace-nowrap"
-        style={{ color: positive ? "#5CB010" : "#f4f7f3" }}
+        style={{ color: positive ? "#5CB010" : "#EF4444" }}
       >
-        {positive ? "+" : "-"}{Math.abs(tx.amount).toLocaleString("en-US")} {tx.currency || "₹"}
+        {positive ? "+" : "-"}₹ {Math.abs(tx.amount).toLocaleString("en-IN")}
       </div>
     </motion.div>
   );
 }
 
+const INITIAL_LIMIT = 10;
+
 export default function TransactionList({ transactions }: { transactions: Transaction[] }) {
+  const [showAll, setShowAll] = useState(false);
+
   // Check if there's a wallet setup transaction
   const hasSetupTx = transactions.some((tx) => tx.name === "Wallet Setup Completed");
   const setupTx = transactions.find((tx) => tx.name === "Wallet Setup Completed");
   const otherTx = transactions.filter((tx) => tx.name !== "Wallet Setup Completed");
 
+  const visibleTx = showAll ? otherTx : otherTx.slice(0, INITIAL_LIMIT);
+  const hasMore = otherTx.length > INITIAL_LIMIT;
+
   return (
     <div className="px-5 pt-6">
       <div className="flex items-center justify-between mb-4">
         <div className="font-display font-bold text-lg text-text">History</div>
-        <div className="text-xs font-semibold text-[#5CB010] hover:underline cursor-pointer">See all</div>
+        {hasMore && (
+          <button
+            onClick={() => setShowAll(!showAll)}
+            className="text-xs font-semibold text-[#5CB010] hover:underline cursor-pointer"
+          >
+            {showAll ? "Show less" : `See all (${otherTx.length})`}
+          </button>
+        )}
       </div>
 
       {/* Initial Wallet Setup Card */}
@@ -178,7 +201,7 @@ export default function TransactionList({ transactions }: { transactions: Transa
 
       {/* Other Transactions */}
       <div className="flex flex-col">
-        {otherTx.map((tx, i) => (
+        {visibleTx.map((tx, i) => (
           <TransactionRow key={tx.id} tx={tx} delay={0.22 + i * 0.05} />
         ))}
       </div>

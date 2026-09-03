@@ -2,18 +2,22 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import TopBar from "../components/TopBar";
 import WalletCard from "../components/WalletCard";
+import BalanceCards from "../components/BalanceCards";
 import StatPills from "../components/StatPills";
 import TransactionList from "../components/TransactionList";
 import BottomNav from "../components/BottomNav";
 import SendMoney from "../components/SendMoney";
 import StatisticsCard from "../components/StatisticsCard";
 import BalanceSetup from "../components/BalanceSetup";
+import PendingReturns from "../components/PendingReturns";
+import CalendarView from "../components/CalendarView";
 import { useStore } from "../context/StoreContext";
 
 export default function Home() {
   const { balances, transactions, transferMoney } = useStore();
   const [activeTab, setActiveTab] = useState<string>("home");
   const [showSetup, setShowSetup] = useState(!balances);
+  const [showReturns, setShowReturns] = useState(false);
 
   const handleSendSuccess = async (amount: number, _recipient: string) => {
     await transferMoney(amount, "liquid", `Transfer to ${_recipient}`);
@@ -42,7 +46,11 @@ export default function Home() {
                 Overview
               </div>
               <WalletCard balance={totalBalance} />
-              <StatPills />
+              <BalanceCards
+                liquidAmount={balances?.liquidAmount ?? 0}
+                accountAmount={balances?.accountAmount ?? 0}
+              />
+              <StatPills onToReceiveClick={() => setShowReturns(true)} />
               <TransactionList transactions={transactions} />
             </motion.div>
           )}
@@ -74,7 +82,19 @@ export default function Home() {
             </motion.div>
           )}
 
-          {(activeTab === "people" || activeTab === "grid") && (
+          {activeTab === "calendar" && (
+            <motion.div
+              key="calendar"
+              initial={{ opacity: 0, x: -15 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 15 }}
+              transition={{ duration: 0.3 }}
+            >
+              <CalendarView onBack={() => setActiveTab("home")} />
+            </motion.div>
+          )}
+
+          {activeTab === "grid" && (
             <motion.div
               key="placeholder"
               initial={{ opacity: 0, x: -15 }}
@@ -112,6 +132,9 @@ export default function Home() {
           <BalanceSetup onComplete={() => setShowSetup(false)} />
         )}
       </AnimatePresence>
+
+      {/* Pending Returns Modal */}
+      <PendingReturns isOpen={showReturns} onClose={() => setShowReturns(false)} />
     </div>
   );
 }

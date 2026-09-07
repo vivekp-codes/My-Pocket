@@ -1,12 +1,13 @@
 import { motion } from "framer-motion";
-import { useStore } from "../context/StoreContext";
+import { useStore, getCurrencyInfo } from "../context/StoreContext";
 
 interface StatPillsProps {
   onToReceiveClick?: () => void;
 }
 
 export default function StatPills({ onToReceiveClick }: StatPillsProps) {
-  const { transactions } = useStore();
+  const { transactions, currency } = useStore();
+  const cur = getCurrencyInfo(currency);
 
   // Calculate stats from actual transactions
   const credited = transactions
@@ -29,9 +30,9 @@ export default function StatPills({ onToReceiveClick }: StatPillsProps) {
   const toReceive = Math.max(0, givenWithLove - receivedBack);
 
   const stats = [
-    { label: "Credited", value: `₹ ${credited.toLocaleString("en-IN")}`, color: "#5CB010", actionable: false },
-    { label: "Debited", value: `₹ ${debited.toLocaleString("en-IN")}`, color: "#ff7a6b", actionable: false },
-    { label: "To Receive", value: `₹ ${toReceive.toLocaleString("en-IN")}`, color: "#F59E0B", actionable: toReceive > 0 },
+    { label: "Credited", value: `${cur.symbol} ${credited.toLocaleString(cur.locale)}`, color: "#5CB010", actionable: false },
+    { label: "Debited", value: `${cur.symbol} ${debited.toLocaleString(cur.locale)}`, color: "#ff7a6b", actionable: false },
+    { label: "To Receive", value: `${cur.symbol} ${toReceive.toLocaleString(cur.locale)}`, color: "#F59E0B", actionable: toReceive > 0 },
   ];
 
   return (

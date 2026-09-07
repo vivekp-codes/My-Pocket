@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
 import { Wallet, CreditCard, CurrencyCircleDollar, ArrowRight, Check, X } from "phosphor-react";
-import { useStore } from "../context/StoreContext";
+import { useStore, getCurrencyInfo } from "../context/StoreContext";
 
 type SetupStep = "choose" | "liquid" | "account" | "confirm";
 
@@ -10,7 +10,8 @@ interface BalanceSetupProps {
 }
 
 export default function BalanceSetup({ onComplete }: BalanceSetupProps) {
-  const { saveBalance } = useStore();
+  const { saveBalance, currency } = useStore();
+  const cur = getCurrencyInfo(currency);
   const [step, setStep] = useState<SetupStep>("choose");
   const [hasLiquid, setHasLiquid] = useState<boolean | null>(null);
   const [hasAccount, setHasAccount] = useState<boolean | null>(null);
@@ -24,7 +25,7 @@ export default function BalanceSetup({ onComplete }: BalanceSetupProps) {
   const formatNumber = (val: string) => {
     const num = val.replace(/[^0-9]/g, "");
     if (!num) return "";
-    return Number(num).toLocaleString("en-IN");
+    return Number(num).toLocaleString(cur.locale);
   };
 
   const handleChoose = (liquid: boolean, account: boolean) => {
@@ -160,7 +161,7 @@ export default function BalanceSetup({ onComplete }: BalanceSetupProps) {
                   Liquid Amount
                 </label>
                 <div className="flex items-center gap-2">
-                  <span className="text-xl font-display font-bold text-[#5CB010]">₹</span>
+                  <span className="text-xl font-display font-bold text-[#5CB010]">{cur.symbol}</span>
                   <input
                     type="text"
                     value={liquidAmount}
@@ -196,7 +197,7 @@ export default function BalanceSetup({ onComplete }: BalanceSetupProps) {
                   Account Balance
                 </label>
                 <div className="flex items-center gap-2">
-                  <span className="text-xl font-display font-bold text-[#F59E0B]">₹</span>
+                  <span className="text-xl font-display font-bold text-[#F59E0B]">{cur.symbol}</span>
                   <input
                     type="text"
                     value={accountAmount}
@@ -309,7 +310,7 @@ export default function BalanceSetup({ onComplete }: BalanceSetupProps) {
                       <p className="text-[13px] font-semibold text-text">Liquid</p>
                     </div>
                     <p className="font-display font-bold text-[15px] text-[#5CB010]">
-                      ₹{parseFloat(liquidAmount.replace(/,/g, "") || "0").toLocaleString("en-IN")}
+                      {cur.symbol}{parseFloat(liquidAmount.replace(/,/g, "") || "0").toLocaleString(cur.locale)}
                     </p>
                   </div>
                 )}
@@ -323,7 +324,7 @@ export default function BalanceSetup({ onComplete }: BalanceSetupProps) {
                       <p className="text-[13px] font-semibold text-text">Account</p>
                     </div>
                     <p className="font-display font-bold text-[15px] text-[#F59E0B]">
-                      ₹{parseFloat(accountAmount.replace(/,/g, "") || "0").toLocaleString("en-IN")}
+                      {cur.symbol}{parseFloat(accountAmount.replace(/,/g, "") || "0").toLocaleString(cur.locale)}
                     </p>
                   </div>
                 )}
@@ -336,10 +337,10 @@ export default function BalanceSetup({ onComplete }: BalanceSetupProps) {
                     <p className="text-[13px] font-bold text-[#5CB010]">Total</p>
                   </div>
                   <p className="font-display font-bold text-lg text-[#5CB010]">
-                    ₹{(
+                    {cur.symbol}{(
                       parseFloat(liquidAmount.replace(/,/g, "") || "0") +
                       parseFloat(accountAmount.replace(/,/g, "") || "0")
-                    ).toLocaleString("en-IN")}
+                    ).toLocaleString(cur.locale)}
                   </p>
                 </div>
               </div>

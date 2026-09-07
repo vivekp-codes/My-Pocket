@@ -16,7 +16,7 @@ import {
   CaretLeft,
   CaretRight,
 } from "phosphor-react";
-import { useStore } from "../context/StoreContext";
+import { useStore, getCurrencyInfo } from "../context/StoreContext";
 import type { Transaction } from "../types/transaction";
 import type { ComponentType } from "react";
 
@@ -90,8 +90,17 @@ function getMonthRange(date: Date): { start: Date; end: Date; label: string } {
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+// Local YYYY-MM-DD — safe for comparing against tx.date (also local).
+function toDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export default function StatisticsCard({ onBack }: StatisticsCardProps) {
-  const { transactions } = useStore();
+  const { transactions, currency } = useStore();
+  const cur = getCurrencyInfo(currency);
   const [activeToggle, setActiveToggle] = useState<"income" | "spend">("income");
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -99,39 +108,36 @@ export default function StatisticsCard({ onBack }: StatisticsCardProps) {
   const monthRange = useMemo(() => getMonthRange(currentDate), [currentDate]);
 
   // ── Monthly totals ──────────────────────────────────────
+  const monthPrefix = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}`;
   const monthlyCredits = useMemo(
     () =>
       transactions
         .filter(
           (tx) =>
             (tx.type === "income_salary" || tx.type === "income_topup") &&
-            new Date(tx.date) >= monthRange.start &&
-            new Date(tx.date) <= monthRange.end
+            tx.date.startsWith(monthPrefix)
         )
         .reduce((sum, tx) => sum + tx.amount, 0),
-    [transactions, monthRange]
+    [transactions, monthPrefix]
   );
 
   const monthlyDebits = useMemo(
     () =>
       transactions
         .filter(
-          (tx) =>
-            tx.type === "expense" &&
-            new Date(tx.date) >= monthRange.start &&
-            new Date(tx.date) <= monthRange.end
+          (tx) => tx.type === "expense" && tx.date.startsWith(monthPrefix)
         )
         .reduce((sum, tx) => sum + tx.amount, 0),
-    [transactions, monthRange]
+    [transactions, monthPrefix]
   );
 
   // ── Weekly daily data ───────────────────────────────────
   const weekDailyData = useMemo(() => {
-    const days: { label: string; credit: number; debit: number }[] = [];
+    const days: { label: string; dateStr: string; credit: number; debit: number }[] = [];
     for (let i = 0; i < 7; i++) {
       const d = new Date(weekRange.start);
       d.setDate(weekRange.start.getDate() + i);
-      const dateStr = d.toISOString().split("T")[0];
+      const dateStr = toDateStr(d);
       const credit = transactions
         .filter(
           (tx) =>
@@ -141,7 +147,7 @@ export default function StatisticsCard({ onBack }: StatisticsCardProps) {
       const debit = transactions
         .filter((tx) => tx.type === "expense" && tx.date === dateStr)
         .reduce((s, tx) => s + tx.amount, 0);
-      days.push({ label: DAY_NAMES[i], credit, debit });
+      days.push({ label: DAY_NAMES[i], dateStr, credit, debit });
     }
     return days;
   }, [transactions, weekRange]);
@@ -211,13 +217,13 @@ export default function StatisticsCard({ onBack }: StatisticsCardProps) {
         <div className="bg-[#5CB010]/8 border border-[#5CB010]/15 rounded-[18px] px-3 py-3 text-center">
           <div className="text-[10px] font-bold text-[#5CB010]/70 uppercase tracking-wider">Credit</div>
           <div className="font-display font-bold text-[16px] text-[#5CB010] mt-1">
-            ₹ {monthlyCredits.toLocaleString("en-IN")}
+            {cur.symbol} {monthlyCredits.toLocaleString(cur.locale)}
           </div>
         </div>
         <div className="bg-[#EF4444]/8 border border-[#EF4444]/15 rounded-[18px] px-3 py-3 text-center">
           <div className="text-[10px] font-bold text-[#EF4444]/70 uppercase tracking-wider">Debit</div>
           <div className="font-display font-bold text-[16px] text-[#EF4444] mt-1">
-            ₹ {monthlyDebits.toLocaleString("en-IN")}
+            {cur.symbol} {monthlyDebits.toLocaleString(cur.locale)}
           </div>
         </div>
         <div className="bg-cardBg border border-stroke rounded-[18px] px-3 py-3 text-center">
@@ -226,7 +232,7 @@ export default function StatisticsCard({ onBack }: StatisticsCardProps) {
             className="font-display font-bold text-[16px] mt-1"
             style={{ color: totalBalance >= 0 ? "#5CB010" : "#EF4444" }}
           >
-            ₹ {totalBalance.toLocaleString("en-IN")}
+            {cur.symbol} {totalBalance.toLocaleString(cur.locale)}
           </div>
         </div>
       </div>
@@ -240,9 +246,7 @@ export default function StatisticsCard({ onBack }: StatisticsCardProps) {
           {weekDailyData.map((day, i) => {
             const creditH = maxDayVal > 0 ? (day.credit / maxDayVal) * 100 : 0;
             const debitH = maxDayVal > 0 ? (day.debit / maxDayVal) * 100 : 0;
-            const isToday =
-              new Date().toISOString().split("T")[0] ===
-              new Date(weekRange.start.getTime() + i * 86400000).toISOString().split("T")[0];
+            const isToday = day.dateStr === toDateStr(new Date());
             return (
               <div key={day.label} className="flex-1 flex flex-col items-center gap-1">
                 {/* Bars */}
@@ -351,7 +355,7 @@ export default function StatisticsCard({ onBack }: StatisticsCardProps) {
                     className="font-display font-bold text-[13px]"
                     style={{ color: isIncome ? "#5CB010" : "#EF4444" }}
                   >
-                    {isIncome ? "+" : "-"}₹ {tx.amount.toLocaleString("en-IN")}
+                    {isIncome ? "+" : "-"}{cur.symbol} {tx.amount.toLocaleString(cur.locale)}
                   </div>
                 </motion.div>
               );

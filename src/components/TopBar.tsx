@@ -1,15 +1,14 @@
-import { useRef } from "react";
 import { motion } from "framer-motion";
 import { useStore } from "../context/StoreContext";
 import ProfileModal from "./ProfileModal";
 
 interface TopBarProps {
   onSetupWallet?: () => void;
+  onGoToSettings?: () => void;
 }
 
-export default function TopBar({ onSetupWallet }: TopBarProps) {
+export default function TopBar({ onSetupWallet, onGoToSettings }: TopBarProps) {
   const { user, theme, toggleTheme, showProfile, setShowProfile } = useStore();
-  const anchorRef = useRef<HTMLButtonElement>(null);
 
   const displayName = user?.name
     ? user.name.split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ")
@@ -33,7 +32,6 @@ export default function TopBar({ onSetupWallet }: TopBarProps) {
         className="flex items-center justify-between px-5 pt-2 pb-5"
       >
         <button
-          ref={anchorRef}
           onClick={() => setShowProfile(!showProfile)}
           title="View profile"
           className="flex items-center gap-3"
@@ -81,8 +79,8 @@ export default function TopBar({ onSetupWallet }: TopBarProps) {
       <ProfileModal
         isOpen={showProfile}
         onClose={() => setShowProfile(false)}
-        anchorRef={anchorRef}
         onSetupWallet={onSetupWallet}
+        onGoToSettings={onGoToSettings}
       />
     </div>
   );

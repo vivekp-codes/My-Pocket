@@ -2,9 +2,10 @@ import { StoreProvider, useStore } from "./context/StoreContext";
 import AuthScreen from "./screens/AuthScreen";
 import Home from "./screens/Home";
 import PhoneFrame from "./components/PhoneFrame";
+import LockScreen from "./components/LockScreen";
 
 function AppContent() {
-  const { user, loading } = useStore();
+  const { user, loading, locked } = useStore();
 
   // Show nothing (or a spinner) while checking auth session
   if (loading) {
@@ -40,9 +41,10 @@ function AppContent() {
 
   // No user → auth screen. User exists but profile incomplete → also auth screen (avatar step)
   const needsProfile = user && !user.profileComplete;
+  const ready = user && !needsProfile;
   return (
     <PhoneFrame>
-      {user && !needsProfile ? <Home /> : <AuthScreen />}
+      {ready && locked ? <LockScreen /> : ready ? <Home /> : <AuthScreen />}
     </PhoneFrame>
   );
 }

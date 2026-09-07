@@ -15,6 +15,7 @@ import {
 } from "phosphor-react";
 import type { Transaction } from "../types/transaction";
 import type { ComponentType } from "react";
+import { useStore, getCurrencyInfo } from "../context/StoreContext";
 
 // ── Phosphor Icons by category ────────────────────────────────
 const iconMap: Record<string, ComponentType<{ size?: number; weight?: string }>> = {
@@ -83,6 +84,8 @@ function getIconBg(tx: Transaction): string {
 }
 
 function TransactionRow({ tx, delay }: { tx: Transaction; delay: number }) {
+  const { currency } = useStore();
+  const cur = getCurrencyInfo(currency);
   const positive = tx.type === "income_salary" || tx.type === "income_topup";
   const isReturnable = tx.category === "with_love";
   const IconComponent = getIconComponent(tx);
@@ -139,7 +142,7 @@ function TransactionRow({ tx, delay }: { tx: Transaction; delay: number }) {
         className="font-display font-bold text-[14.5px] whitespace-nowrap"
         style={{ color: positive ? "#5CB010" : "#EF4444" }}
       >
-        {positive ? "+" : "-"}₹ {Math.abs(tx.amount).toLocaleString("en-IN")}
+        {positive ? "+" : "-"}{cur.symbol} {Math.abs(tx.amount).toLocaleString(cur.locale)}
       </div>
     </motion.div>
   );
@@ -148,6 +151,8 @@ function TransactionRow({ tx, delay }: { tx: Transaction; delay: number }) {
 const INITIAL_LIMIT = 10;
 
 export default function TransactionList({ transactions }: { transactions: Transaction[] }) {
+  const { currency } = useStore();
+  const cur = getCurrencyInfo(currency);
   const [showAll, setShowAll] = useState(false);
 
   // Check if there's a wallet setup transaction
@@ -193,7 +198,7 @@ export default function TransactionList({ transactions }: { transactions: Transa
               <p className="text-[11px] text-textDim/50">Initial balance added</p>
             </div>
             <p className="font-display font-bold text-[15px] text-[#5CB010]">
-              +₹{setupTx.amount.toLocaleString("en-IN")}
+              +{cur.symbol}{setupTx.amount.toLocaleString(cur.locale)}
             </p>
           </div>
         </motion.div>

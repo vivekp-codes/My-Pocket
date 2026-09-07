@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Heart, ArrowDownLeft, Check } from "phosphor-react";
-import { useStore } from "../context/StoreContext";
+import { X, Heart, ArrowDownLeft } from "phosphor-react";
+import { useStore, getCurrencyInfo } from "../context/StoreContext";
 
 interface PendingReturnsProps {
   isOpen: boolean;
@@ -8,7 +8,8 @@ interface PendingReturnsProps {
 }
 
 export default function PendingReturns({ isOpen, onClose }: PendingReturnsProps) {
-  const { transactions } = useStore();
+  const { transactions, currency } = useStore();
+  const cur = getCurrencyInfo(currency);
 
   // Debits given with love (money lent out)
   const givenWithLove = transactions
@@ -56,7 +57,7 @@ export default function PendingReturns({ isOpen, onClose }: PendingReturnsProps)
                 <div>
                   <h3 className="font-display font-bold text-base text-text">To Receive</h3>
                   <p className="text-[11px] text-textDim/50 mt-0.5">
-                    ₹ {totalPending.toLocaleString("en-IN")} pending
+                    {cur.symbol} {totalPending.toLocaleString(cur.locale)} pending
                   </p>
                 </div>
                 <button
@@ -110,7 +111,7 @@ export default function PendingReturns({ isOpen, onClose }: PendingReturnsProps)
                           </div>
                         </div>
                         <div className="font-display font-bold text-[14px] text-[#F59E0B]">
-                          ₹ {tx.amount.toLocaleString("en-IN")}
+                          {cur.symbol} {tx.amount.toLocaleString(cur.locale)}
                         </div>
                       </motion.div>
                     ))}
@@ -149,7 +150,7 @@ export default function PendingReturns({ isOpen, onClose }: PendingReturnsProps)
                           </div>
                         </div>
                         <div className="font-display font-bold text-[14px] text-[#5CB010]">
-                          +₹ {tx.amount.toLocaleString("en-IN")}
+                          +{cur.symbol} {tx.amount.toLocaleString(cur.locale)}
                         </div>
                       </motion.div>
                     ))}

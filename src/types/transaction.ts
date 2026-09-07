@@ -11,7 +11,7 @@ export type TransactionType = "expense" | "income_salary" | "income_topup" | "tr
 
 export type BucketType = "liquid" | "account";
 
-export type ExpenseCategory = "travel" | "food" | "bills" | "shopping" | "entertainment" | "salary" | "other";
+export type ExpenseCategory = "travel" | "food" | "bills" | "shopping" | "entertainment" | "salary" | "other" | "with_love";
 
 export interface Balance {
   userId: string;

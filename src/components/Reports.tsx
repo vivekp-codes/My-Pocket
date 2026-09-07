@@ -10,7 +10,7 @@ import {
   Trophy,
   Medal,
 } from "phosphor-react";
-import { useStore } from "../context/StoreContext";
+import { useStore, getCurrencyInfo } from "../context/StoreContext";
 
 interface ReportsProps {
   onBack?: () => void;
@@ -68,7 +68,8 @@ function StatCard({ icon, label, value, sublabel, color, delay = 0 }: StatCardPr
 }
 
 export default function Reports({ onBack }: ReportsProps) {
-  const { transactions } = useStore();
+  const { transactions, currency } = useStore();
+  const cur = getCurrencyInfo(currency);
   const now = new Date();
 
   // ── Current week ───────────────────────────────────────
@@ -157,7 +158,7 @@ export default function Reports({ onBack }: ReportsProps) {
   const highestWeek = weekEntries[0];
   const lowestWeek = weekEntries[weekEntries.length - 1];
 
-  const fmtAmount = (n: number) => `₹ ${n.toLocaleString("en-IN")}`;
+  const fmtAmount = (n: number) => `${cur.symbol} ${n.toLocaleString(cur.locale)}`;
 
   return (
     <div className="px-5 pt-4 h-full overflow-y-auto">

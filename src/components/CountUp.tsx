@@ -4,9 +4,10 @@ interface CountUpProps {
   target: number;
   prefix?: string;
   duration?: number;
+  locale?: string;
 }
 
-export default function CountUp({ target, prefix = "₹", duration = 1100 }: CountUpProps) {
+export default function CountUp({ target, prefix = "₹", duration = 1100, locale = "en-IN" }: CountUpProps) {
   const [value, setValue] = useState(0);
 
   useEffect(() => {
@@ -24,5 +25,5 @@ export default function CountUp({ target, prefix = "₹", duration = 1100 }: Cou
     return () => cancelAnimationFrame(raf);
   }, [target, duration]);
 
-  return <>{prefix}{value.toLocaleString("en-IN")}</>;
+  return <>{prefix}{value.toLocaleString(locale)}</>;
 }

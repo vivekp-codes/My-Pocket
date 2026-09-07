@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, CaretLeft, CaretRight, CaretDown, X } from "phosphor-react";
-import { useStore } from "../context/StoreContext";
+import { useStore, getCurrencyInfo } from "../context/StoreContext";
 import type { Transaction } from "../types/transaction";
 
 interface CalendarViewProps {
@@ -10,11 +10,20 @@ interface CalendarViewProps {
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+// Local YYYY-MM-DD — safe for comparing against tx.date (also local).
+function toDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export default function CalendarView({ onBack }: CalendarViewProps) {
-  const { transactions } = useStore();
+  const { transactions, currency } = useStore();
+  const cur = getCurrencyInfo(currency);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<string | null>(
-    new Date().toISOString().split("T")[0]
+  const [selectedDate, setSelectedDate] = useState<string | null>(() =>
+    toDateStr(new Date())
   );
 
   const year = currentDate.getFullYear();
@@ -57,7 +66,7 @@ export default function CalendarView({ onBack }: CalendarViewProps) {
     setSelectedDate(null);
   };
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = toDateStr(new Date());
   const monthLabel = currentDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
   // ── Month totals for current month ────────────────────
@@ -73,7 +82,6 @@ export default function CalendarView({ onBack }: CalendarViewProps) {
   // ── Weekly breakdown of the selected month (real Mon–Sun weeks) ──
   const DAY_ABBR = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const fmtDay = (d: Date) => `${DAY_ABBR[d.getDay()]} ${d.getDate()}`;
-  const toDateStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
   const monthWeeks = useMemo(() => {
     const firstOfMonth = new Date(year, month, 1);
@@ -241,7 +249,7 @@ export default function CalendarView({ onBack }: CalendarViewProps) {
                   <div className="bg-[#5CB010]/8 border border-[#5CB010]/15 rounded-xl px-2.5 py-2 text-center">
                     <div className="text-[8px] font-bold text-[#5CB010]/60 uppercase">Credit</div>
                     <div className="font-display font-bold text-[13px] text-[#5CB010] mt-0.5">
-                      ₹ {selectedCredits.toLocaleString("en-IN")}
+                      {cur.symbol} {selectedCredits.toLocaleString(cur.locale)}
                     </div>
                   </div>
                 )}
@@ -249,7 +257,7 @@ export default function CalendarView({ onBack }: CalendarViewProps) {
                   <div className="bg-[#EF4444]/8 border border-[#EF4444]/15 rounded-xl px-2.5 py-2 text-center">
                     <div className="text-[8px] font-bold text-[#EF4444]/60 uppercase">Debit</div>
                     <div className="font-display font-bold text-[13px] text-[#EF4444] mt-0.5">
-                      ₹ {selectedDebits.toLocaleString("en-IN")}
+                      {cur.symbol} {selectedDebits.toLocaleString(cur.locale)}
                     </div>
                   </div>
                 )}
@@ -259,7 +267,7 @@ export default function CalendarView({ onBack }: CalendarViewProps) {
                     className="font-display font-bold text-[13px] mt-0.5"
                     style={{ color: selectedCredits - selectedDebits >= 0 ? "#5CB010" : "#EF4444" }}
                   >
-                    ₹ {(selectedCredits - selectedDebits).toLocaleString("en-IN")}
+                    {cur.symbol} {(selectedCredits - selectedDebits).toLocaleString(cur.locale)}
                   </div>
                 </div>
               </div>
@@ -284,13 +292,13 @@ export default function CalendarView({ onBack }: CalendarViewProps) {
           <div className="bg-[#5CB010]/8 border border-[#5CB010]/15 rounded-xl px-2.5 py-2.5 text-center">
             <div className="text-[8px] font-bold text-[#5CB010]/60 uppercase tracking-wider">Credit</div>
             <div className="font-display font-bold text-[14px] text-[#5CB010] mt-0.5">
-              ₹ {monthCredits.toLocaleString("en-IN")}
+              {cur.symbol} {monthCredits.toLocaleString(cur.locale)}
             </div>
           </div>
           <div className="bg-[#EF4444]/8 border border-[#EF4444]/15 rounded-xl px-2.5 py-2.5 text-center">
             <div className="text-[8px] font-bold text-[#EF4444]/60 uppercase tracking-wider">Spend</div>
             <div className="font-display font-bold text-[14px] text-[#EF4444] mt-0.5">
-              ₹ {monthDebits.toLocaleString("en-IN")}
+              {cur.symbol} {monthDebits.toLocaleString(cur.locale)}
             </div>
           </div>
           <div className="bg-cardBg border border-stroke rounded-xl px-2.5 py-2.5 text-center">
@@ -299,7 +307,7 @@ export default function CalendarView({ onBack }: CalendarViewProps) {
               className="font-display font-bold text-[14px] mt-0.5"
               style={{ color: monthNet >= 0 ? "#5CB010" : "#EF4444" }}
             >
-              ₹ {monthNet.toLocaleString("en-IN")}
+              {cur.symbol} {monthNet.toLocaleString(cur.locale)}
             </div>
           </div>
         </div>
@@ -334,10 +342,10 @@ export default function CalendarView({ onBack }: CalendarViewProps) {
                     </span>
                     <span className="flex items-center gap-2">
                       <span className="text-[9.5px] font-display font-bold text-[#5CB010]">
-                        +₹{w.credits.toLocaleString("en-IN")}
+                        +{cur.symbol}{w.credits.toLocaleString(cur.locale)}
                       </span>
                       <span className="text-[9.5px] font-display font-bold text-[#EF4444]">
-                        -₹{w.debits.toLocaleString("en-IN")}
+                        -{cur.symbol}{w.debits.toLocaleString(cur.locale)}
                       </span>
                     </span>
                   </div>

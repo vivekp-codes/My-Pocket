@@ -1,11 +1,14 @@
 import { motion } from "framer-motion";
 import CountUp from "./CountUp";
+import { useStore, getCurrencyInfo } from "../context/StoreContext";
 
 interface WalletCardProps {
   balance?: number;
 }
 
 export default function WalletCard({ balance = 0 }: WalletCardProps) {
+  const { currency } = useStore();
+  const cur = getCurrencyInfo(currency);
   const integerPart = Math.floor(balance);
   // Get decimals (up to 2 places)
   const decimalPart = (balance % 1).toFixed(2).substring(1); // e.g. ".40"
@@ -63,11 +66,11 @@ export default function WalletCard({ balance = 0 }: WalletCardProps) {
 
           <div>
             <div className="font-display font-bold text-[32px] text-white tracking-tight leading-none">
-              <span className="text-white/60 mr-1.5">₹</span><CountUp target={integerPart} prefix="" />
+              <span className="text-white/60 mr-1.5">{cur.symbol}</span><CountUp target={integerPart} prefix="" locale={cur.locale} />
               <span className="text-white/80">{decimalPart}</span>
             </div>
             <div className="text-[12px] font-semibold text-[#9AFF45] tracking-wide mt-1.5">
-              INDIAN RUPEE
+              {cur.name.toUpperCase()}
             </div>
           </div>
         </div>

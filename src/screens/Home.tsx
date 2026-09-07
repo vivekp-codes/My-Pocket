@@ -11,13 +11,19 @@ import StatisticsCard from "../components/StatisticsCard";
 import BalanceSetup from "../components/BalanceSetup";
 import PendingReturns from "../components/PendingReturns";
 import CalendarView from "../components/CalendarView";
+import Settings from "../components/Settings";
 import { useStore } from "../context/StoreContext";
 
 export default function Home() {
-  const { balances, transactions, transferMoney } = useStore();
+  const { balances, transactions, transferMoney, setShowProfile } = useStore();
   const [activeTab, setActiveTab] = useState<string>("home");
   const [showSetup, setShowSetup] = useState(!balances);
   const [showReturns, setShowReturns] = useState(false);
+
+  const goToSettings = () => {
+    setShowProfile(false);
+    setActiveTab("settings");
+  };
 
   const handleSendSuccess = async (amount: number, _recipient: string) => {
     await transferMoney(amount, "liquid", `Transfer to ${_recipient}`);
@@ -41,7 +47,10 @@ export default function Home() {
               exit={{ opacity: 0, x: 15 }}
               transition={{ duration: 0.3 }}
             >
-              <TopBar onSetupWallet={() => setShowSetup(true)} />
+              <TopBar
+                onSetupWallet={() => setShowSetup(true)}
+                onGoToSettings={goToSettings}
+              />
               <div className="font-display font-bold text-[34px] leading-none tracking-tight px-5 pb-5 text-text">
                 Overview
               </div>
@@ -94,28 +103,15 @@ export default function Home() {
             </motion.div>
           )}
 
-          {activeTab === "grid" && (
+          {activeTab === "settings" && (
             <motion.div
-              key="placeholder"
+              key="settings"
               initial={{ opacity: 0, x: -15 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 15 }}
               transition={{ duration: 0.3 }}
-              className="px-5 text-center py-20 bg-cardBg border border-stroke rounded-[28px] m-5"
             >
-              <div className="text-4xl mb-4">🛠️</div>
-              <h3 className="font-display font-bold text-lg text-text">
-                Under Construction
-              </h3>
-              <p className="text-xs text-textDim/70 mt-1">
-                This section is coming soon.
-              </p>
-              <button
-                onClick={() => setActiveTab("home")}
-                className="mt-6 bg-[#5CB010] text-[#050805] font-bold px-5 py-2 rounded-full text-xs hover:bg-[#5CB010]/90 transition-all"
-              >
-                Go Back Home
-              </button>
+              <Settings onBack={() => setActiveTab("home")} />
             </motion.div>
           )}
         </AnimatePresence>

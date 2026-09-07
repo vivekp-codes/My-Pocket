@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import CountUp from "./CountUp";
+import { useStore, getCurrencyInfo } from "../context/StoreContext";
 
 interface BalanceCardsProps {
   liquidAmount: number;
@@ -11,6 +12,8 @@ function PulsingDot({ color }: { color: string }) {
 }
 
 export default function BalanceCards({ liquidAmount, accountAmount }: BalanceCardsProps) {
+  const { currency } = useStore();
+  const cur = getCurrencyInfo(currency);
   return (
     <div className="flex gap-2.5 px-5 pt-3">
       {/* In Hand */}
@@ -27,8 +30,8 @@ export default function BalanceCards({ liquidAmount, accountAmount }: BalanceCar
           </span>
         </div>
         <div className="font-display font-bold text-[16px] text-text leading-none">
-          <span className="text-textDim/40 mr-1">₹</span>
-          <CountUp target={liquidAmount} prefix="" />
+          <span className="text-textDim/40 mr-1">{cur.symbol}</span>
+          <CountUp target={liquidAmount} prefix="" locale={cur.locale} />
         </div>
       </motion.div>
 
@@ -46,8 +49,8 @@ export default function BalanceCards({ liquidAmount, accountAmount }: BalanceCar
           </span>
         </div>
         <div className="font-display font-bold text-[16px] text-text leading-none">
-          <span className="text-textDim/40 mr-1">₹</span>
-          <CountUp target={accountAmount} prefix="" />
+          <span className="text-textDim/40 mr-1">{cur.symbol}</span>
+          <CountUp target={accountAmount} prefix="" locale={cur.locale} />
         </div>
       </motion.div>
     </div>

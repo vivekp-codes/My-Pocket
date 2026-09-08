@@ -183,7 +183,7 @@ export default function StatisticsCard({ onBack }: StatisticsCardProps) {
         >
           <ArrowLeft size={20} />
         </button>
-        <span className="font-display font-bold text-lg text-text">Week Report</span>
+        <span className="font-display font-bold text-lg text-text">Weekly Report</span>
         <div className="w-11" />
       </div>
 

@@ -2,10 +2,11 @@
 // 1. Cloud Name — found on your Cloudinary Dashboard (cloudinary.com/console)
 // 2. Upload Preset — create an UNSIGNED preset in:
 //    Cloudinary Dashboard → Settings → Upload → "Add upload preset"
-//    Signing mode: Unsigned. Then paste the preset name below.
+//    Signing mode: Unsigned. Then paste the preset name into .env
+//    (see .env.example for the variable names).
 // Both are safe to expose in client code (unsigned presets are made for this).
-export const CLOUDINARY_CLOUD_NAME = "dmdvqqo4k";
-export const CLOUDINARY_UPLOAD_PRESET = "my_pocket_avatar";
+export const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+export const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
 // ── Upload an image file directly to Cloudinary ─────────────────
 // Returns the secure URL of the uploaded image.

@@ -24,6 +24,7 @@ import {
   orderBy,
   serverTimestamp,
   updateDoc,
+  deleteDoc,
 } from "firebase/firestore";
 import { auth, db } from "../lib/firebase";
 import type {
@@ -32,6 +33,7 @@ import type {
   Transaction,
   BucketType,
   ExpenseCategory,
+  TransactionType,
 } from "../types/transaction";
 
 // ── Currencies ──────────────────────────────────────────────────
@@ -52,6 +54,15 @@ export const CURRENCIES: CurrencyInfo[] = [
 
 export function getCurrencyInfo(code: string): CurrencyInfo {
   return CURRENCIES.find((c) => c.code === code) ?? CURRENCIES[0];
+}
+
+export interface UpdateTransactionInput {
+  type?: TransactionType;
+  category?: ExpenseCategory | null;
+  amount?: number;
+  date?: string;
+  note?: string;
+  bucket?: BucketType;
 }
 
 // ── App Lock (4-digit PIN) ──────────────────────────────────────
@@ -125,6 +136,13 @@ interface StoreContextType {
     fromBucket: BucketType,
     note?: string
   ) => Promise<{ success: boolean; error?: string }>;
+  deleteTransaction: (
+    id: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  updateTransaction: (
+    id: string,
+    updates: UpdateTransactionInput
+  ) => Promise<{ success: boolean; error?: string }>;
   toggleTheme: () => void;
   currency: string;
   setCurrency: (code: string) => void;
@@ -157,6 +175,21 @@ const getDayLabel = (startDateStr: string, currentDateStr: string): number => {
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
   return Math.max(1, diffDays + 1);
 };
+
+// Net effect a transaction had on the balances: which bucket it touched and by
+// how much (+credit / -debit). Transfers store their *destination* bucket, so
+// the money actually left the opposite one.
+function txNetEffect(tx: Transaction): { bucket: BucketType; delta: number } {
+  if (tx.type === "expense") return { bucket: tx.bucket, delta: -tx.amount };
+  if (tx.type === "income_salary" || tx.type === "income_topup") {
+    return { bucket: tx.bucket, delta: tx.amount };
+  }
+  return { bucket: tx.bucket === "liquid" ? "account" : "liquid", delta: -tx.amount };
+}
+
+function txCategoryName(category: string): string {
+  return category.charAt(0).toUpperCase() + category.slice(1).replace(/_/g, " ");
+}
 
 // ── Provider ───────────────────────────────────────────────────────
 export function StoreProvider({ children }: { children: ReactNode }) {
@@ -286,6 +319,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           iconBg: data.icon_bg,
           meta: data.bucket_label || bucketLabel || data.meta || "",
           currency: data.currency,
+          createdAt: typeof data.created_at?.toMillis === "function" ? data.created_at.toMillis() : 0,
         };
       });
     } catch (indexError) {
@@ -315,10 +349,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           iconBg: data.icon_bg,
           meta: data.bucket_label || bucketLabel || data.meta || "",
           currency: data.currency,
+          createdAt: typeof data.created_at?.toMillis === "function" ? data.created_at.toMillis() : 0,
         };
       });
-      // Sort manually
-      txList.sort((a, b) => b.date.localeCompare(a.date));
+      // Sort manually — newest added first
+      txList.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0) || b.date.localeCompare(a.date));
     }
 
     setUser(userObj);
@@ -627,6 +662,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         icon: getCategoryIcon(category),
         iconBg: "#1c2a20",
         meta: bucketLabel,
+        createdAt: Date.now(),
       },
       ...prev,
     ]);
@@ -705,6 +741,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         icon: category === "with_love" ? "with_love" : type === "income_salary" ? "salary" : "topup",
         iconBg: category === "with_love" ? "#8B2252" : type === "income_salary" ? "#2E680A" : "#1a3a24",
         meta: bucketLabel,
+        createdAt: Date.now(),
       },
       ...prev,
     ]);
@@ -779,11 +816,180 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         name: `Transfer: ${fromBucket === "liquid" ? "Liquid → Account" : "Account → Liquid"}`,
         icon: "🔄",
         iconBg: "#122a1f",
+        createdAt: Date.now(),
       },
       ...prev,
     ]);
 
     return { success: true };
+  };
+
+  // ── DB: Delete Transaction ──────────────────────────────────────
+  const deleteTransaction = async (
+    id: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (!user || !balances) {
+      return { success: false, error: "No active session" };
+    }
+    const prevTx = transactions.find((t) => t.id === id);
+    if (!prevTx) return { success: false, error: "Transaction not found" };
+
+    try {
+      await deleteDoc(doc(db, "transactions", id));
+
+      // Reverse the transaction's effect on the balances
+      const effect = txNetEffect(prevTx);
+      const liquidAmount =
+        effect.bucket === "liquid"
+          ? Math.max(0, balances.liquidAmount - effect.delta)
+          : balances.liquidAmount;
+      const accountAmount =
+        effect.bucket === "account"
+          ? Math.max(0, balances.accountAmount - effect.delta)
+          : balances.accountAmount;
+
+      await setDoc(
+        doc(db, "balances", user.id),
+        {
+          liquid_amount: liquidAmount,
+          account_amount: accountAmount,
+          updated_at: serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      setBalances({ userId: user.id, liquidAmount, accountAmount });
+      setTransactions((prev) => prev.filter((t) => t.id !== id));
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  };
+
+  // ── DB: Update Transaction ──────────────────────────────────────
+  const updateTransaction = async (
+    id: string,
+    updates: UpdateTransactionInput
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (!user || !balances) {
+      return { success: false, error: "No active session" };
+    }
+    const prevTx = transactions.find((t) => t.id === id);
+    if (!prevTx) return { success: false, error: "Transaction not found" };
+
+    const type: TransactionType = updates.type ?? prevTx.type;
+    let category: ExpenseCategory | undefined =
+      updates.category !== undefined
+        ? (updates.category ?? undefined)
+        : prevTx.category;
+    const amount = updates.amount ?? prevTx.amount;
+    const date = updates.date ?? prevTx.date;
+    const note = updates.note !== undefined ? updates.note : prevTx.note;
+    const bucket: BucketType = updates.bucket ?? prevTx.bucket;
+    const finalNote = note ? note.trim() : undefined;
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return { success: false, error: "Amount must be greater than zero" };
+    }
+
+    // Enforce sane category constraints per type
+    if (type === "income_salary") category = "salary";
+    else if (type === "income_topup" && !category) category = "other";
+
+    const dayLabel = getDayLabel(user.startDate, date);
+    const bucketLabel = bucket === "liquid" ? "In Hand" : "Account";
+
+    // Rebuild derived display fields (matches the add flows)
+    let name = prevTx.name;
+    let icon = prevTx.icon;
+    let iconBg = prevTx.iconBg;
+    if (type === "expense") {
+      const cat = category ?? "other";
+      const baseName = txCategoryName(cat);
+      name = finalNote ? `${baseName} (${finalNote})` : baseName;
+      icon = getCategoryIcon(cat);
+      iconBg = "#1c2a20";
+    } else if (type === "income_salary" || type === "income_topup") {
+      const catName = category
+        ? txCategoryName(category)
+        : type === "income_salary"
+        ? "Salary"
+        : "Top-up Wallet";
+      name = catName;
+      icon =
+        category === "with_love"
+          ? "with_love"
+          : type === "income_salary"
+          ? "salary"
+          : "topup";
+      iconBg =
+        category === "with_love"
+          ? "#8B2252"
+          : type === "income_salary"
+          ? "#2E680A"
+          : "#1a3a24";
+    }
+
+    const newTx: Transaction = {
+      ...prevTx,
+      type,
+      category,
+      amount,
+      date,
+      dayLabel,
+      bucket,
+      note: finalNote,
+      name,
+      icon,
+      iconBg,
+      meta: bucketLabel,
+    };
+
+    // Reconcile balances: undo the old effect, apply the new one
+    const oldEffect = txNetEffect(prevTx);
+    const newEffect = txNetEffect(newTx);
+    let liquidAmount = balances.liquidAmount;
+    let accountAmount = balances.accountAmount;
+    if (oldEffect.bucket === "liquid") liquidAmount -= oldEffect.delta;
+    else accountAmount -= oldEffect.delta;
+    if (newEffect.bucket === "liquid") liquidAmount += newEffect.delta;
+    else accountAmount += newEffect.delta;
+
+    if (liquidAmount < 0 || accountAmount < 0) {
+      return { success: false, error: "Not enough balance in that bucket" };
+    }
+
+    try {
+      await updateDoc(doc(db, "transactions", id), {
+        type,
+        category: category ?? null,
+        amount,
+        date,
+        day_label: dayLabel,
+        note: finalNote ?? null,
+        bucket,
+        bucket_label: bucketLabel,
+        name,
+        icon,
+        icon_bg: iconBg,
+      });
+
+      await setDoc(
+        doc(db, "balances", user.id),
+        {
+          liquid_amount: liquidAmount,
+          account_amount: accountAmount,
+          updated_at: serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      setBalances({ userId: user.id, liquidAmount, accountAmount });
+      setTransactions((prev) => prev.map((t) => (t.id === id ? newTx : t)));
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
   };
 
   // ── Theme toggle ───────────────────────────────────────────────
@@ -816,6 +1022,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         addExpense,
         addIncome,
         transferMoney,
+        deleteTransaction,
+        updateTransaction,
         toggleTheme,
         currency,
         setCurrency,

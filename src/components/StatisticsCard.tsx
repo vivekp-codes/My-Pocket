@@ -7,7 +7,6 @@ import {
   ShoppingBag,
   FilmStrip,
   CurrencyDollar,
-  CreditCard,
   PlusCircle,
   ArrowsLeftRight,
   Briefcase,
@@ -16,12 +15,12 @@ import {
   CaretLeft,
   CaretRight,
 } from "phosphor-react";
+import type { Icon } from "phosphor-react";
 import { useStore, getCurrencyInfo } from "../context/StoreContext";
 import type { Transaction } from "../types/transaction";
-import type { ComponentType } from "react";
 
 // ── Phosphor Icons ─────────────────────────────────────────
-const iconMap: Record<string, ComponentType<{ size?: number; weight?: string }>> = {
+const iconMap: Record<string, Icon> = {
   food: ForkKnife,
   travel: Car,
   bills: Receipt,

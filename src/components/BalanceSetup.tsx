@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence, useMotionValue, useTransform, animate } from "framer-motion";
 import { Wallet, CreditCard, CurrencyCircleDollar, ArrowRight, Check, X } from "phosphor-react";
 import { useStore, getCurrencyInfo } from "../context/StoreContext";

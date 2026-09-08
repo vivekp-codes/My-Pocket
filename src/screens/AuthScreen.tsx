@@ -15,14 +15,6 @@ const PROFILE_IMAGES = [
 ];
 
 // ── Color palette ────────────────────────────────────────────
-const C = {
-  bright:  "#9AFF45",   // lightest — glows, active highlights
-  primary: "#73DA14",   // primary buttons, toggles, rings
-  mid:     "#5CB010",   // hover states, secondary accents
-  dark:    "#2E680A",   // borders, subtle accents
-  bg:      "#050805",   // deepest dark
-};
-
 // ── Minimal fade + y transition ─────────────────────────────
 const viewVariants = {
   enter: { opacity: 0, y: 6 },
@@ -38,7 +30,7 @@ const slideVariants = {
 };
 
 export default function AuthScreen() {
-  const { signUp, login, createProfile, user } = useStore();
+  const { signUp, login, createProfile } = useStore();
 
   // Always start at login — user picks where to go
   const [view, setView] = useState<AuthView>("login");
@@ -142,7 +134,6 @@ export default function AuthScreen() {
 
   // ── Shared button class ────────────────────────────────────
   const btnPrimary = `w-full h-[48px] sm:h-[54px] rounded-full flex items-center justify-center font-display font-bold text-[13px] sm:text-sm active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed`;
-  const btnLabel = `${btnPrimary} bg-[#5CB010] hover:bg-[#5CB010]/90 text-[#050805] shadow-[0_8px_20px_-4px_rgba(92,176,16,0.35)]`;
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-bg px-3 sm:px-4 relative overflow-hidden">

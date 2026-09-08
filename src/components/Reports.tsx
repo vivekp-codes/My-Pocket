@@ -31,8 +31,6 @@ function getWeekRange(date: Date): { start: Date; end: Date; label: string } {
   return { start, end, label: `${fmt(start)} – ${fmt(end)}` };
 }
 
-const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
 interface StatCardProps {
   icon: React.ReactNode;
   label: string;

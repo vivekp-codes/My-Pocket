@@ -38,7 +38,7 @@ const allCategories = [
 
 type TransactionType = "expense" | "income" | "returnable";
 
-export default function SendMoney({ onBack, onSendSuccess }: SendMoneyProps) {
+export default function SendMoney({ onBack, onSendSuccess: _onSendSuccess }: SendMoneyProps) {
   const { addExpense, addIncome, currency, balances } = useStore();
   const cur = getCurrencyInfo(currency);
   const [showCategoryModal, setShowCategoryModal] = useState(false);

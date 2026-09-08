@@ -3,13 +3,23 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCqpT0TQa5o-HGN3gdRNsiccfz1qpRRL1E",
-  authDomain: "my-pocket-2026.firebaseapp.com",
-  projectId: "my-pocket-2026",
-  storageBucket: "my-pocket-2026.firebasestorage.app",
-  messagingSenderId: "348539351238",
-  appId: "1:348539351238:web:5227523536ea12841867c7",
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
+
+const missing = Object.entries(firebaseConfig)
+  .filter(([, value]) => !value)
+  .map(([key]) => `VITE_FIREBASE_${key.toUpperCase()}`);
+
+if (missing.length > 0) {
+  throw new Error(
+    `Missing Firebase env ${missing.join(", ")}. Copy .env.example to .env and fill in your values.`
+  );
+}
 
 const app = initializeApp(firebaseConfig);
 

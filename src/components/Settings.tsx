@@ -12,12 +12,13 @@ import {
   CaretRight,
   Check,
   X,
+  ChatCircleDots,
 } from "phosphor-react";
 import { useStore, CURRENCIES, getCurrencyInfo } from "../context/StoreContext";
 import { useProfilePhotoUpload } from "../hooks/useProfilePhotoUpload";
 import AvatarCropModal from "./AvatarCropModal";
 import PinSheet from "./PinSheet";
-import { sendContactMessage, WEB3FORMS_ACCESS_KEY } from "../lib/contact";
+import ConnectSheet from "./ConnectSheet";
 
 interface SettingsProps {
   onBack?: () => void;
@@ -28,11 +29,7 @@ export default function Settings({ onBack }: SettingsProps) {
   const cur = getCurrencyInfo(currency);
   const [pinSheetOpen, setPinSheetOpen] = useState(false);
   const [pinMode, setPinMode] = useState<"enable" | "disable">("enable");
-  const [contactType, setContactType] = useState<"Suggestion" | "Issue" | "Other">("Suggestion");
-  const [contactMessage, setContactMessage] = useState("");
-  const [sendingContact, setSendingContact] = useState(false);
-  const [contactSent, setContactSent] = useState(false);
-  const [contactError, setContactError] = useState<string | null>(null);
+  const [connectSheetOpen, setConnectSheetOpen] = useState(false);
   const { inputRef: photoInputRef, uploading: photoUploading, error: photoError, openPicker: openPhotoPicker, handleFile: handlePhotoFile, cropSource, closeCrop, uploadCropped } = useProfilePhotoUpload();
 
   const [editing, setEditing] = useState(false);
@@ -105,31 +102,6 @@ export default function Settings({ onBack }: SettingsProps) {
   const openPinSheet = (mode: "enable" | "disable") => {
     setPinMode(mode);
     setPinSheetOpen(true);
-  };
-
-  const handleSendContact = async () => {
-    if (!contactMessage.trim()) return;
-    if (WEB3FORMS_ACCESS_KEY === "YOUR_ACCESS_KEY_HERE") {
-      setContactError("Contact email isn't configured yet by the developer.");
-      return;
-    }
-    setSendingContact(true);
-    setContactError(null);
-    try {
-      await sendContactMessage({
-        name: user?.name || "My Pocket user",
-        email: user?.email || "",
-        type: contactType,
-        message: contactMessage.trim(),
-      });
-      setContactSent(true);
-      setContactMessage("");
-      setTimeout(() => setContactSent(false), 4000);
-    } catch (err: any) {
-      setContactError(err?.message || "Failed to send. Please try again.");
-    } finally {
-      setSendingContact(false);
-    }
   };
 
   return (
@@ -408,93 +380,20 @@ export default function Settings({ onBack }: SettingsProps) {
           <p className="text-[10px] font-bold text-textDim/40 uppercase tracking-wider">Connect</p>
         </div>
 
-        <div className="px-5 pb-5">
-          {/* Heading */}
-          <p className="text-[13px] font-semibold text-text">Share feedback</p>
-          <p className="text-[10px] text-textDim/50 mt-0.5 mb-4">
-            Found a bug or have an idea? Send it straight to the developer.
-          </p>
-
-          {/* Type chips */}
-          <div className="flex gap-2 mb-3">
-            {(["Suggestion", "Issue", "Other"] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setContactType(t)}
-                className={`flex-1 py-2 rounded-[10px] text-[11px] font-bold transition-all ${
-                  contactType === t
-                    ? t === "Issue"
-                      ? "bg-coral/10 border border-coral/25 text-coral"
-                      : "bg-[#5CB010]/10 border border-[#5CB010]/25 text-[#5CB010]"
-                    : "bg-white/[0.03] border border-stroke text-textDim hover:text-text"
-                }`}
-              >
-                {t}
-              </button>
-            ))}
+        <button
+          onClick={() => setConnectSheetOpen(true)}
+          className="w-full flex items-center gap-3.5 px-5 py-4 text-left transition-all active:scale-[0.98]"
+        >
+          <div className="relative w-11 h-11 rounded-[14px] bg-gradient-to-br from-[#73DA14]/20 to-[#2E680A]/15 border border-[#5CB010]/25 flex items-center justify-center shrink-0">
+            <ChatCircleDots size={19} weight="bold" className="text-[#5CB010]" />
+            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#73DA14] border-2 border-cardBg" />
           </div>
-
-          {/* Message input */}
-          <textarea
-            value={contactMessage}
-            onChange={(e) => setContactMessage(e.target.value)}
-            maxLength={600}
-            rows={4}
-            placeholder="Write your message…"
-            className="w-full resize-none bg-white/[0.04] border border-stroke focus:border-[#5CB010]/40 rounded-[14px] px-3.5 py-3 text-[12.5px] text-text font-medium outline-none transition-colors placeholder:text-textDim/25 mb-2"
-          />
-
-          {/* Character count + note */}
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[9.5px] text-textDim/30">Sent as {user?.email || "your account"}</p>
-            <span className="text-[9.5px] text-textDim/30">{contactMessage.length}/600</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-semibold text-text">Message the Developer</p>
+            <p className="text-[10px] text-textDim/50 mt-0.5 truncate">Share feedback, report a bug or suggest an idea</p>
           </div>
-
-          {/* Success / Error feedback */}
-          {contactSent && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-[12px] bg-[#5CB010]/10 border border-[#5CB010]/25 mb-3">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#5CB010" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 13l4 4L19 7" />
-              </svg>
-              <p className="text-[11px] font-semibold text-[#5CB010]">Message sent — thanks for reaching out!</p>
-            </div>
-          )}
-          {contactError && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-[12px] bg-coral/10 border border-coral/20 mb-3">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="text-coral">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
-              <p className="text-[11px] font-semibold text-coral">{contactError}</p>
-            </div>
-          )}
-
-          {/* Send button */}
-          <button
-            onClick={handleSendContact}
-            disabled={sendingContact || !contactMessage.trim()}
-            className="w-full flex items-center justify-center gap-2 h-[42px] rounded-[13px] bg-gradient-to-br from-[#73DA14] via-[#5CB010] to-[#2E680A] text-[#050805] font-display font-bold text-[12.5px] active:scale-[0.97] transition-all disabled:opacity-35 disabled:cursor-not-allowed shadow-[0_6px_18px_-4px_rgba(92,176,16,0.35)]"
-          >
-            {sendingContact ? (
-              <>
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                Sending…
-              </>
-            ) : (
-              <>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="22" y1="2" x2="11" y2="13" />
-                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                </svg>
-                Send Message
-              </>
-            )}
-          </button>
-        </div>
+          <CaretRight size={15} className="text-textDim/40 shrink-0" />
+        </button>
       </div>
 
       {/* About */}
@@ -627,6 +526,12 @@ export default function Settings({ onBack }: SettingsProps) {
         open={pinSheetOpen}
         mode={pinMode}
         onClose={() => setPinSheetOpen(false)}
+      />
+
+      {/* Connect feedback sheet */}
+      <ConnectSheet
+        open={connectSheetOpen}
+        onClose={() => setConnectSheetOpen(false)}
       />
     </div>
   );

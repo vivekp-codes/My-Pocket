@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ForkKnife,
   Car,
@@ -7,18 +7,18 @@ import {
   ShoppingBag,
   FilmStrip,
   CurrencyDollar,
-  CreditCard,
   PlusCircle,
   ArrowsLeftRight,
   Briefcase,
   Heart,
 } from "phosphor-react";
+import type { Icon, IconWeight } from "phosphor-react";
 import type { Transaction } from "../types/transaction";
-import type { ComponentType } from "react";
 import { useStore, getCurrencyInfo } from "../context/StoreContext";
+import EditTransaction from "./EditTransaction";
 
 // ── Phosphor Icons by category ────────────────────────────────
-const iconMap: Record<string, ComponentType<{ size?: number; weight?: string }>> = {
+const iconMap: Record<string, Icon> = {
   food: ForkKnife,
   travel: Car,
   bills: Receipt,
@@ -46,7 +46,7 @@ const iconBgColors: Record<string, string> = {
 };
 
 // ── Icon weights by category ──────────────────────────────────
-const iconWeights: Record<string, "thin" | "light" | "regular" | "bold" | "fill" | "duotone"> = {
+const iconWeights: Record<string, IconWeight> = {
   food: "light",
   travel: "regular",
   bills: "light",
@@ -59,7 +59,7 @@ const iconWeights: Record<string, "thin" | "light" | "regular" | "bold" | "fill"
   transfer: "light",
 };
 
-function getIconComponent(tx: Transaction): ComponentType<{ size?: number; weight?: string }> {
+function getIconComponent(tx: Transaction): Icon {
   if (tx.icon && iconMap[tx.icon]) return iconMap[tx.icon];
   if (tx.type === "income_salary") return iconMap.salary;
   if (tx.type === "income_topup") return iconMap.topup;
@@ -67,7 +67,7 @@ function getIconComponent(tx: Transaction): ComponentType<{ size?: number; weigh
   return iconMap[tx.category || "other"] || iconMap.other;
 }
 
-function getIconWeight(tx: Transaction): string {
+function getIconWeight(tx: Transaction): IconWeight {
   if (tx.icon && iconWeights[tx.icon]) return iconWeights[tx.icon];
   if (tx.type === "income_salary") return iconWeights.salary;
   if (tx.type === "income_topup") return iconWeights.topup;
@@ -83,11 +83,10 @@ function getIconBg(tx: Transaction): string {
   return iconBgColors[tx.category || "other"] || "#1c2a20";
 }
 
-function TransactionRow({ tx, delay }: { tx: Transaction; delay: number }) {
+function TransactionRow({ tx, delay, onOpen }: { tx: Transaction; delay: number; onOpen: () => void }) {
   const { currency } = useStore();
   const cur = getCurrencyInfo(currency);
   const positive = tx.type === "income_salary" || tx.type === "income_topup";
-  const isReturnable = tx.category === "with_love";
   const IconComponent = getIconComponent(tx);
 
   return (
@@ -96,6 +95,7 @@ function TransactionRow({ tx, delay }: { tx: Transaction; delay: number }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6, delay, ease: [0.2, 0.8, 0.2, 1] }}
       whileTap={{ scale: 0.98 }}
+      onClick={onOpen}
       className="flex items-center gap-3.5 px-4 py-3.5 border border-white/[0.03] rounded-[22px] mb-2.5 last:mb-0 shadow-[0_4px_12px_rgba(0,0,0,0.1)] cursor-pointer"
       style={{
         background: positive
@@ -154,11 +154,18 @@ export default function TransactionList({ transactions }: { transactions: Transa
   const { currency } = useStore();
   const cur = getCurrencyInfo(currency);
   const [showAll, setShowAll] = useState(false);
+  const [editingTx, setEditingTx] = useState<Transaction | null>(null);
+
+  // Newest added first (by createdAt, then date as a tiebreaker)
+  const sorted = useMemo(
+    () => [...transactions].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0) || b.date.localeCompare(a.date)),
+    [transactions]
+  );
 
   // Check if there's a wallet setup transaction
-  const hasSetupTx = transactions.some((tx) => tx.name === "Wallet Setup Completed");
-  const setupTx = transactions.find((tx) => tx.name === "Wallet Setup Completed");
-  const otherTx = transactions.filter((tx) => tx.name !== "Wallet Setup Completed");
+  const hasSetupTx = sorted.some((tx) => tx.name === "Wallet Setup Completed");
+  const setupTx = sorted.find((tx) => tx.name === "Wallet Setup Completed");
+  const otherTx = sorted.filter((tx) => tx.name !== "Wallet Setup Completed");
 
   const visibleTx = showAll ? otherTx : otherTx.slice(0, INITIAL_LIMIT);
   const hasMore = otherTx.length > INITIAL_LIMIT;
@@ -207,9 +214,16 @@ export default function TransactionList({ transactions }: { transactions: Transa
       {/* Other Transactions */}
       <div className="flex flex-col">
         {visibleTx.map((tx, i) => (
-          <TransactionRow key={tx.id} tx={tx} delay={0.22 + i * 0.05} />
+          <TransactionRow key={tx.id} tx={tx} delay={0.22 + i * 0.05} onOpen={() => setEditingTx(tx)} />
         ))}
       </div>
+
+      {/* Edit / Delete sheet */}
+      <AnimatePresence>
+        {editingTx && (
+          <EditTransaction tx={editingTx} onClose={() => setEditingTx(null)} />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

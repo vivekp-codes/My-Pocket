@@ -1,10 +1,14 @@
-// ── Web3Forms contact config ──────────────────────────────────────
-// 1. Go to https://web3forms.com and click "Create Access Key".
-// 2. Enter YOUR developer email (where you want user messages to arrive).
-// 3. You'll receive the Access Key by email — paste it below.
-// The access key is an alias to your email and is SAFE to expose in
-// client code (it is public by design), just like the Cloudinary keys.
-export const WEB3FORMS_ACCESS_KEY = "01a3fce4-ad35-4385-920d-ab6079fc55f9";
+// ── EmailJS contact config ─────────────────────────────────────────
+// 1. Go to https://www.emailjs.com and create a free account.
+// 2. Add an Email Service (e.g. Gmail, Outlook) and an Email Template.
+// 3. Grab your Service ID, Template ID, and Public Key from the dashboard.
+// 4. Paste them into .env (see .env.example for the variable names).
+//
+// NOTE: The Public Key is safe to expose in client code. Never commit
+// your Private Key or SMTP credentials here.
+export const EMAILJS_SERVICE_ID: string = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+export const EMAILJS_TEMPLATE_ID: string = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+export const EMAILJS_PUBLIC_KEY: string = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
 
 interface ContactPayload {
   name: string;
@@ -15,22 +19,18 @@ interface ContactPayload {
 
 // ── Send a message from the user to the developer's email ─────────
 export async function sendContactMessage(payload: ContactPayload): Promise<void> {
-  const res = await fetch("https://api.web3forms.com/submit", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({
-      access_key: WEB3FORMS_ACCESS_KEY,
+  const emailjs = (await import("@emailjs/browser")).default;
+
+  await emailjs.send(
+    EMAILJS_SERVICE_ID,
+    EMAILJS_TEMPLATE_ID,
+    {
       subject: `[My Pocket] ${payload.type} — from ${payload.name}`,
-      email: payload.email, // user's email → reply-to so you can follow up
-      name: payload.name,
+      from_name: payload.name,
+      reply_to: payload.email,
       type: payload.type,
       message: payload.message,
-      botcheck: "", // hidden honeypot field Web3Forms checks for spam
-    }),
-  });
-
-  const data = await res.json().catch(() => null);
-  if (!res.ok || !data?.success) {
-    throw new Error(data?.message || "Failed to send your message. Please try again.");
-  }
+    },
+    { publicKey: EMAILJS_PUBLIC_KEY }
+  );
 }

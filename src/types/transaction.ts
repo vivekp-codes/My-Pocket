@@ -35,4 +35,5 @@ export interface Transaction {
   iconBg: string; // bg color for circular badge
   meta?: string;
   currency?: string;
+  createdAt?: number; // epoch millis — used to order "latest added first"
 }

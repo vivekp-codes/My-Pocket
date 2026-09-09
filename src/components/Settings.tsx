@@ -13,12 +13,14 @@ import {
   Check,
   X,
   ChatCircleDots,
+  FilePdf,
 } from "phosphor-react";
 import { useStore, CURRENCIES, getCurrencyInfo } from "../context/StoreContext";
 import { useProfilePhotoUpload } from "../hooks/useProfilePhotoUpload";
 import AvatarCropModal from "./AvatarCropModal";
 import PinSheet from "./PinSheet";
 import ConnectSheet from "./ConnectSheet";
+import ExportSheet from "./ExportSheet";
 
 interface SettingsProps {
   onBack?: () => void;
@@ -30,6 +32,7 @@ export default function Settings({ onBack }: SettingsProps) {
   const [pinSheetOpen, setPinSheetOpen] = useState(false);
   const [pinMode, setPinMode] = useState<"enable" | "disable">("enable");
   const [connectSheetOpen, setConnectSheetOpen] = useState(false);
+  const [exportSheetOpen, setExportSheetOpen] = useState(false);
   const { inputRef: photoInputRef, uploading: photoUploading, error: photoError, openPicker: openPhotoPicker, handleFile: handlePhotoFile, cropSource, closeCrop, uploadCropped } = useProfilePhotoUpload();
 
   const [editing, setEditing] = useState(false);
@@ -396,6 +399,27 @@ export default function Settings({ onBack }: SettingsProps) {
         </button>
       </div>
 
+      {/* Data — export a PDF report of your transactions */}
+      <div className="bg-cardBg border border-stroke rounded-[22px] mb-4 overflow-hidden">
+        <div className="px-5 pt-4 pb-2">
+          <p className="text-[10px] font-bold text-textDim/40 uppercase tracking-wider">Data</p>
+        </div>
+
+        <button
+          onClick={() => setExportSheetOpen(true)}
+          className="w-full flex items-center gap-3.5 px-5 py-4 text-left transition-all active:scale-[0.98]"
+        >
+          <div className="w-11 h-11 rounded-[14px] bg-gradient-to-br from-[#73DA14]/20 to-[#2E680A]/15 border border-[#5CB010]/25 flex items-center justify-center shrink-0">
+            <FilePdf size={19} weight="bold" className="text-[#5CB010]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px] font-semibold text-text">Export Data</p>
+            <p className="text-[10px] text-textDim/50 mt-0.5 truncate">Download a PDF report of your transactions</p>
+          </div>
+          <CaretRight size={15} className="text-textDim/40 shrink-0" />
+        </button>
+      </div>
+
       {/* About */}
       <div className="bg-cardBg border border-stroke rounded-[22px] mb-4 overflow-hidden">
         <div className="px-5 pt-4 pb-2">
@@ -532,6 +556,12 @@ export default function Settings({ onBack }: SettingsProps) {
       <ConnectSheet
         open={connectSheetOpen}
         onClose={() => setConnectSheetOpen(false)}
+      />
+
+      {/* Export PDF sheet */}
+      <ExportSheet
+        open={exportSheetOpen}
+        onClose={() => setExportSheetOpen(false)}
       />
     </div>
   );

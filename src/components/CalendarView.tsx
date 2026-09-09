@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, CaretLeft, CaretRight, CaretDown, X } from "phosphor-react";
+import { ArrowLeft, CaretLeft, CaretRight, CaretDown, X, ArrowRight } from "phosphor-react";
 import { useStore, getCurrencyInfo } from "../context/StoreContext";
 import type { Transaction } from "../types/transaction";
+import MonthBreakdownSheet from "./MonthBreakdownSheet";
 
 interface CalendarViewProps {
   onBack?: () => void;
@@ -129,6 +130,7 @@ export default function CalendarView({ onBack }: CalendarViewProps) {
 
   // ── Month picker modal state ──────────────────────────
   const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [showBreakdown, setShowBreakdown] = useState(false);
 
   return (
     <div className="px-5 pt-4 h-full overflow-y-auto">
@@ -368,6 +370,14 @@ export default function CalendarView({ onBack }: CalendarViewProps) {
             })}
           </div>
         </div>
+
+        {/* View Month Breakdown */}
+        <button
+          onClick={() => setShowBreakdown(true)}
+          className="mt-4 w-full flex items-center justify-center gap-1 text-[12px] font-bold text-[#5CB010] underline underline-offset-4 decoration-[#5CB010]/40 transition-all hover:text-[#73DA14] hover:decoration-[#5CB010]/80 active:scale-[0.98]"
+        >
+          View Month Breakdown <ArrowRight size={13} weight="bold" />
+        </button>
       </div>
 
       {/* Month Picker Modal */}
@@ -441,6 +451,14 @@ export default function CalendarView({ onBack }: CalendarViewProps) {
           </>
         )}
       </AnimatePresence>
+
+      {/* Month Breakdown Sheet */}
+      <MonthBreakdownSheet
+        isOpen={showBreakdown}
+        onClose={() => setShowBreakdown(false)}
+        year={year}
+        month={month}
+      />
     </div>
   );
 }

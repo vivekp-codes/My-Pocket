@@ -1,9 +1,9 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, CaretLeft, CaretRight, CaretDown, X, ArrowRight } from "phosphor-react";
+import { ArrowLeft, CaretLeft, CaretRight, CaretDown, X, ChartPieSlice } from "phosphor-react";
 import { useStore, getCurrencyInfo } from "../context/StoreContext";
 import type { Transaction } from "../types/transaction";
-import MonthBreakdownSheet from "./MonthBreakdownSheet";
+import MonthlyBreakdownSheet from "./MonthlyBreakdownSheet";
 
 interface CalendarViewProps {
   onBack?: () => void;
@@ -246,7 +246,7 @@ export default function CalendarView({ onBack }: CalendarViewProps) {
 
             {/* Day Totals */}
             {(selectedCredits > 0 || selectedDebits > 0) && (
-              <div className="grid grid-cols-3 gap-2 mb-3">
+              <div className="grid grid-cols-2 gap-2 mb-3">
                 {selectedCredits > 0 && (
                   <div className="bg-[#5CB010]/8 border border-[#5CB010]/15 rounded-xl px-2.5 py-2 text-center">
                     <div className="text-[8px] font-bold text-[#5CB010]/60 uppercase">Credit</div>
@@ -263,15 +263,6 @@ export default function CalendarView({ onBack }: CalendarViewProps) {
                     </div>
                   </div>
                 )}
-                <div className="bg-cardBg border border-stroke rounded-xl px-2.5 py-2 text-center">
-                  <div className="text-[8px] font-bold text-textDim/40 uppercase">Net</div>
-                  <div
-                    className="font-display font-bold text-[13px] mt-0.5"
-                    style={{ color: selectedCredits - selectedDebits >= 0 ? "#5CB010" : "#EF4444" }}
-                  >
-                    {cur.symbol} {(selectedCredits - selectedDebits).toLocaleString(cur.locale)}
-                  </div>
-                </div>
               </div>
             )}          </motion.div>
         )}
@@ -371,12 +362,28 @@ export default function CalendarView({ onBack }: CalendarViewProps) {
           </div>
         </div>
 
-        {/* View Month Breakdown */}
+        {/* View Monthly Breakdown button */}
         <button
           onClick={() => setShowBreakdown(true)}
-          className="mt-4 w-full flex items-center justify-center gap-1 text-[12px] font-bold text-[#5CB010] underline underline-offset-4 decoration-[#5CB010]/40 transition-all hover:text-[#73DA14] hover:decoration-[#5CB010]/80 active:scale-[0.98]"
+          className="mt-4 pt-3 border-t border-stroke w-full group"
         >
-          View Month Breakdown <ArrowRight size={13} weight="bold" />
+          <div className="flex items-center gap-3 py-1 transition-all active:scale-[0.98]">
+            <div className="w-10 h-10 rounded-[14px] bg-gradient-to-br from-[#5CB010]/20 to-[#2E680A]/10 border border-[#5CB010]/20 flex items-center justify-center shrink-0">
+              <ChartPieSlice size={18} weight="bold" className="text-[#5CB010]" />
+            </div>
+            <div className="flex-1 text-left min-w-0">
+              <div className="text-[12.5px] font-bold text-text group-hover:text-[#5CB010] transition-colors">
+                View Monthly Breakdown
+              </div>
+              <div className="text-[10px] text-textDim/50 mt-0.5 truncate">
+                Spend by category · highest spend · credit details
+              </div>
+            </div>
+            <CaretRight
+              size={16}
+              className="text-textDim/40 group-hover:text-[#5CB010] group-hover:translate-x-0.5 transition-all shrink-0"
+            />
+          </div>
         </button>
       </div>
 
@@ -452,9 +459,9 @@ export default function CalendarView({ onBack }: CalendarViewProps) {
         )}
       </AnimatePresence>
 
-      {/* Month Breakdown Sheet */}
-      <MonthBreakdownSheet
-        isOpen={showBreakdown}
+      {/* Monthly Breakdown Sheet */}
+      <MonthlyBreakdownSheet
+        open={showBreakdown}
         onClose={() => setShowBreakdown(false)}
         year={year}
         month={month}

@@ -23,7 +23,7 @@ export default {
       },
       fontFamily: {
         display: ["Space Grotesk", "sans-serif"],
-        body: ["Inter", "sans-serif"],
+        body: ["Space Grotesk", "sans-serif"],
       },
       borderRadius: {
         xl2: "28px",

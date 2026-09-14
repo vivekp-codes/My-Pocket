@@ -436,9 +436,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     } catch (err: any) {
       let message = "Login failed";
       if (err.code === "auth/user-not-found") {
-        message = "No account found with this email";
+        message = "No account found with this email. Tap “Sign Up” to create one and start using My Pocket.";
       } else if (err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") {
-        message = "Invalid email or password";
+        message = "Invalid email or password. No account yet? Tap “Sign Up” above.";
       } else if (err.code === "auth/too-many-requests") {
         message = "Too many attempts. Please try again later";
       }

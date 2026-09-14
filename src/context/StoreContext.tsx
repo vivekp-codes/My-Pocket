@@ -131,11 +131,6 @@ interface StoreContextType {
     note?: string,
     category?: string
   ) => Promise<void>;
-  transferMoney: (
-    amount: number,
-    fromBucket: BucketType,
-    note?: string
-  ) => Promise<{ success: boolean; error?: string }>;
   deleteTransaction: (
     id: string
   ) => Promise<{ success: boolean; error?: string }>;
@@ -747,83 +742,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     ]);
   };
 
-  // ── DB: Transfer Money ─────────────────────────────────────────
-  const transferMoney = async (
-    amount: number,
-    fromBucket: BucketType,
-    note?: string
-  ): Promise<{ success: boolean; error?: string }> => {
-    if (!user || !balances)
-      return { success: false, error: "No active session" };
-
-    if (fromBucket === "liquid" && balances.liquidAmount < amount)
-      return { success: false, error: "Insufficient liquid balance" };
-    if (fromBucket === "account" && balances.accountAmount < amount)
-      return { success: false, error: "Insufficient account balance" };
-
-    const todayStr = toLocalDateStr(new Date());
-    const dayLabel = getDayLabel(user.startDate, todayStr);
-    const toBucket = fromBucket === "liquid" ? "account" : "liquid";
-
-    const txData = {
-      user_id: user.id,
-      type: "transfer",
-      bucket: toBucket,
-      amount,
-      date: todayStr,
-      day_label: dayLabel,
-      note: note || `Transfer ${fromBucket} → ${toBucket}`,
-      name: `Transfer: ${fromBucket === "liquid" ? "Liquid → Account" : "Account → Liquid"}`,
-      icon: "🔄",
-      icon_bg: "#122a1f",
-      currency: getCurrencyInfo(currency).symbol,
-      created_at: serverTimestamp(),
-    };
-
-    const txRef = doc(collection(db, "transactions"));
-    await setDoc(txRef, txData);
-
-    const updated = { ...balances };
-    if (fromBucket === "liquid") {
-      updated.liquidAmount -= amount;
-      updated.accountAmount += amount;
-    } else {
-      updated.accountAmount -= amount;
-      updated.liquidAmount += amount;
-    }
-
-    await setDoc(
-      doc(db, "balances", user.id),
-      {
-        liquid_amount: updated.liquidAmount,
-        account_amount: updated.accountAmount,
-        updated_at: serverTimestamp(),
-      },
-      { merge: true }
-    );
-
-    setBalances(updated);
-    setTransactions((prev) => [
-      {
-        id: txRef.id,
-        userId: user.id,
-        type: "transfer",
-        bucket: toBucket,
-        amount,
-        date: todayStr,
-        dayLabel,
-        note: note || `Transfer ${fromBucket} → ${toBucket}`,
-        name: `Transfer: ${fromBucket === "liquid" ? "Liquid → Account" : "Account → Liquid"}`,
-        icon: "🔄",
-        iconBg: "#122a1f",
-        createdAt: Date.now(),
-      },
-      ...prev,
-    ]);
-
-    return { success: true };
-  };
-
   // ── DB: Delete Transaction ──────────────────────────────────────
   const deleteTransaction = async (
     id: string
@@ -1021,7 +939,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         logout,
         addExpense,
         addIncome,
-        transferMoney,
         deleteTransaction,
         updateTransaction,
         toggleTheme,

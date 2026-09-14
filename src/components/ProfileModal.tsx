@@ -1,6 +1,7 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStore } from "../context/StoreContext";
+import ConfirmModal from "./ConfirmModal";
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -12,6 +13,7 @@ interface ProfileModalProps {
 export default function ProfileModal({ isOpen, onClose, onSetupWallet, onGoToSettings }: ProfileModalProps) {
   const { user, balances, logout } = useStore();
   const popoverRef = useRef<HTMLDivElement>(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const displayName = user?.name
     ? user.name.split(" ").map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ")
@@ -133,7 +135,7 @@ export default function ProfileModal({ isOpen, onClose, onSetupWallet, onGoToSet
 
               {/* Log Out — secondary */}
               <button
-                onClick={handleLogout}
+                onClick={() => setShowLogoutConfirm(true)}
                 className="w-full flex items-center justify-center gap-2 h-[38px] rounded-[12px] bg-white/[0.04] border border-white/[0.06] text-coral font-semibold text-[12px] hover:bg-coral/10 hover:border-coral/20 active:scale-[0.98] transition-all"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
@@ -147,6 +149,20 @@ export default function ProfileModal({ isOpen, onClose, onSetupWallet, onGoToSet
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Logout confirmation */}
+      <ConfirmModal
+        open={showLogoutConfirm}
+        title="Log out of My Pocket?"
+        description="You'll need to sign back in with your email and password to view your data again."
+        confirmLabel="Log Out"
+        cancelLabel="Cancel"
+        onCancel={() => setShowLogoutConfirm(false)}
+        onConfirm={async () => {
+          setShowLogoutConfirm(false);
+          await handleLogout();
+        }}
+      />
     </>
   );
 }

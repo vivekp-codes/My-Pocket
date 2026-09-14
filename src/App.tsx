@@ -1,40 +1,42 @@
+import { useState, useEffect } from "react";
 import { StoreProvider, useStore } from "./context/StoreContext";
 import AuthScreen from "./screens/AuthScreen";
 import Home from "./screens/Home";
 import PhoneFrame from "./components/PhoneFrame";
 import LockScreen from "./components/LockScreen";
+import AppOverviewSkeleton from "./components/Skeleton";
+import ErrorPage from "./components/ErrorPage";
+import AppErrorBoundary from "./components/AppErrorBoundary";
 
 function AppContent() {
   const { user, loading, locked } = useStore();
+  const [online, setOnline] = useState(() => navigator.onLine);
 
-  // Show nothing (or a spinner) while checking auth session
+  // Track connectivity — show the themed offline screen when the network drops.
+  useEffect(() => {
+    const goOnline = () => setOnline(true);
+    const goOffline = () => setOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+  }, []);
+
+  if (!online) {
+    return (
+      <PhoneFrame>
+        <ErrorPage kind="offline" />
+      </PhoneFrame>
+    );
+  }
+
+  // Layout-matched skeleton while restoring the auth session
   if (loading) {
     return (
       <PhoneFrame>
-        <div className="min-h-screen w-full flex items-center justify-center bg-bg">
-          <div className="flex flex-col items-center gap-3">
-            <svg
-              className="animate-spin h-8 w-8 text-[#5CB010]"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-            <span className="text-sm text-textDim font-semibold">Loading...</span>
-          </div>
-        </div>
+        <AppOverviewSkeleton />
       </PhoneFrame>
     );
   }
@@ -44,7 +46,9 @@ function AppContent() {
   const ready = user && !needsProfile;
   return (
     <PhoneFrame>
-      {ready && locked ? <LockScreen /> : ready ? <Home /> : <AuthScreen />}
+      <AppErrorBoundary>
+        {ready && locked ? <LockScreen /> : ready ? <Home /> : <AuthScreen />}
+      </AppErrorBoundary>
     </PhoneFrame>
   );
 }

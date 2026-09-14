@@ -8,13 +8,16 @@ export default function PhoneFrame({ children }: PhoneFrameProps) {
   return (
     <>
       {/* Mobile: full screen, no frame */}
-      <div className="md:hidden h-screen w-full relative overflow-hidden">{children}</div>
+      <div className="md:hidden h-[100dvh] w-full relative overflow-hidden">{children}</div>
 
       {/* Desktop: centered iPhone frame */}
-      <div className="hidden md:flex min-h-screen w-full items-center justify-center bg-[#080b09] p-8 pb-20">
-        <div className="relative flex flex-col items-center">
+      <div className="hidden md:flex min-h-[100dvh] w-full items-center justify-center bg-[#080b09] p-8 pb-20">
+        <div className="relative flex flex-col items-center max-h-[100dvh]">
           {/* Phone outer shell */}
-          <div className="relative w-[345px] h-[670px] rounded-[44px] bg-[#1a1a1a] p-[11px] shadow-[0_0_0_2px_#2a2a2a,0_20px_60px_-10px_rgba(0,0,0,0.7)]">
+          <div
+            className="relative w-[345px] rounded-[44px] bg-[#1a1a1a] p-[11px] shadow-[0_0_0_2px_#2a2a2a,0_20px_60px_-10px_rgba(0,0,0,0.7)]"
+            style={{ height: "min(670px, calc(100dvh - 96px))" }}
+          >
             {/* Side buttons */}
             <div className="absolute -left-[3px] top-[100px] w-[3px] h-[25px] rounded-l-sm bg-[#2a2a2a]" />
             <div className="absolute -left-[3px] top-[145px] w-[3px] h-[45px] rounded-l-sm bg-[#2a2a2a]" />

@@ -21,7 +21,6 @@ import { useStore, getCurrencyInfo } from "../context/StoreContext";
 
 interface SendMoneyProps {
   onBack?: () => void;
-  onSendSuccess: (amount: number, recipient: string) => void;
 }
 
 // ── All categories ──────────────────────────────────────
@@ -38,7 +37,7 @@ const allCategories = [
 
 type TransactionType = "expense" | "income" | "returnable";
 
-export default function SendMoney({ onBack, onSendSuccess: _onSendSuccess }: SendMoneyProps) {
+export default function SendMoney({ onBack }: SendMoneyProps) {
   const { addExpense, addIncome, currency, balances } = useStore();
   const cur = getCurrencyInfo(currency);
   const [showCategoryModal, setShowCategoryModal] = useState(false);

@@ -553,7 +553,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         bucket: "liquid",
         amount: totalAmount,
         date: todayStr,
-        day_label: 1,
+        day_label: getDayLabel(user?.startDate ?? todayStr, todayStr),
         name: "Wallet Setup Completed",
         icon: "wallet",
         icon_bg: "#2E680A",

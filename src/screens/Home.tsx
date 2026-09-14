@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ArrowsLeftRight } from "phosphor-react";
 import TopBar from "../components/TopBar";
 import WalletCard from "../components/WalletCard";
 import BalanceCards from "../components/BalanceCards";
@@ -12,21 +13,19 @@ import BalanceSetup from "../components/BalanceSetup";
 import PendingReturns from "../components/PendingReturns";
 import CalendarView from "../components/CalendarView";
 import Settings from "../components/Settings";
+import TransferSheet from "../components/TransferSheet";
 import { useStore } from "../context/StoreContext";
 
 export default function Home() {
-  const { balances, transactions, transferMoney, setShowProfile } = useStore();
+  const { balances, transactions, setShowProfile } = useStore();
   const [activeTab, setActiveTab] = useState<string>("home");
   const [showSetup, setShowSetup] = useState(!balances);
   const [showReturns, setShowReturns] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
 
   const goToSettings = () => {
     setShowProfile(false);
     setActiveTab("settings");
-  };
-
-  const handleSendSuccess = async (amount: number, _recipient: string) => {
-    await transferMoney(amount, "liquid", `Transfer to ${_recipient}`);
   };
 
   const totalBalance =
@@ -59,6 +58,18 @@ export default function Home() {
                 liquidAmount={balances?.liquidAmount ?? 0}
                 accountAmount={balances?.accountAmount ?? 0}
               />
+
+              {/* Transfer between buckets */}
+              <div className="px-5 pt-3">
+                <button
+                  onClick={() => setShowTransfer(true)}
+                  className="w-full flex items-center justify-center gap-2 h-[40px] rounded-[14px] bg-surface border border-stroke text-textDim hover:border-[#5CB010]/30 hover:text-text active:scale-[0.98] transition-all text-[12px] font-semibold"
+                >
+                  <ArrowsLeftRight size={15} weight="bold" className="text-[#5CB010]" />
+                  Transfer between buckets
+                </button>
+              </div>
+
               <StatPills onToReceiveClick={() => setShowReturns(true)} />
               <TransactionList transactions={transactions} />
             </motion.div>
@@ -74,7 +85,6 @@ export default function Home() {
             >
               <SendMoney
                 onBack={() => setActiveTab("home")}
-                onSendSuccess={handleSendSuccess}
               />
             </motion.div>
           )}
@@ -118,7 +128,7 @@ export default function Home() {
       </div>
 
       {/* Bottom Nav — absolute fixed at screen bottom, always visible */}
-      <div className="absolute bottom-0 left-0 right-0 w-full px-3 pb-3 pt-1 z-40">
+      <div className="absolute bottom-0 left-0 right-0 w-full px-3 pt-1 z-40 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         <BottomNav activeTab={activeTab} onChangeTab={setActiveTab} />
       </div>
 
@@ -131,6 +141,9 @@ export default function Home() {
 
       {/* Pending Returns Modal */}
       <PendingReturns isOpen={showReturns} onClose={() => setShowReturns(false)} />
+
+      {/* Transfer between buckets */}
+      <TransferSheet isOpen={showTransfer} onClose={() => setShowTransfer(false)} />
     </div>
   );
 }

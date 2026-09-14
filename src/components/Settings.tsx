@@ -19,6 +19,7 @@ import { useProfilePhotoUpload } from "../hooks/useProfilePhotoUpload";
 import AvatarCropModal from "./AvatarCropModal";
 import PinSheet from "./PinSheet";
 import ConnectSheet from "./ConnectSheet";
+import ConfirmModal from "./ConfirmModal";
 
 interface SettingsProps {
   onBack?: () => void;
@@ -36,6 +37,7 @@ export default function Settings({ onBack }: SettingsProps) {
   const [newName, setNewName] = useState("");
   const [saving, setSaving] = useState(false);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const displayName = user?.name
@@ -427,7 +429,7 @@ export default function Settings({ onBack }: SettingsProps) {
 
       {/* Logout */}
       <button
-        onClick={handleLogout}
+        onClick={() => setShowLogoutConfirm(true)}
         className="w-full flex items-center justify-center gap-2 h-[46px] rounded-[14px] bg-[#EF4444]/8 border border-[#EF4444]/20 text-[#EF4444] font-bold text-[13px] hover:bg-[#EF4444]/15 active:scale-[0.98] transition-all"
       >
         <SignOut size={16} weight="bold" />
@@ -532,6 +534,20 @@ export default function Settings({ onBack }: SettingsProps) {
       <ConnectSheet
         open={connectSheetOpen}
         onClose={() => setConnectSheetOpen(false)}
+      />
+
+      {/* Logout confirmation */}
+      <ConfirmModal
+        open={showLogoutConfirm}
+        title="Log out of My Pocket?"
+        description="You'll need to sign back in with your email and password to view your data again."
+        confirmLabel="Log Out"
+        cancelLabel="Cancel"
+        onCancel={() => setShowLogoutConfirm(false)}
+        onConfirm={async () => {
+          setShowLogoutConfirm(false);
+          await handleLogout();
+        }}
       />
     </div>
   );

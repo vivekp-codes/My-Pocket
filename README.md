@@ -1,6 +1,6 @@
-# Expense Tracker — Home Screen
+# My Pocket
 
-A mobile-first personal expense tracker UI, built with React + Vite + TypeScript + Tailwind CSS + Framer Motion.
+A mobile-first personal expense tracker, built with React + Vite + TypeScript + Tailwind CSS + Framer Motion.
 
 ## Stack
 

@@ -347,8 +347,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           createdAt: typeof data.created_at?.toMillis === "function" ? data.created_at.toMillis() : 0,
         };
       });
-      // Sort manually — newest added first
-      txList.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0) || b.date.localeCompare(a.date));
+      // Sort manually — newest added first (by createdAt, else by date)
+      txList.sort(
+        (a, b) =>
+          (b.createdAt || new Date(`${b.date}T00:00:00`).getTime()) -
+            (a.createdAt || new Date(`${a.date}T00:00:00`).getTime()) ||
+          b.date.localeCompare(a.date)
+      );
     }
 
     setUser(userObj);

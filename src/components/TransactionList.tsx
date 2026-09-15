@@ -156,9 +156,17 @@ export default function TransactionList({ transactions }: { transactions: Transa
   const [showAll, setShowAll] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
 
-  // Newest added first (by createdAt, then date as a tiebreaker)
+  // Newest added first — by createdAt when available (newer transactions),
+  // otherwise fall back to the transaction date so older data stays ordered.
   const sorted = useMemo(
-    () => [...transactions].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0) || b.date.localeCompare(a.date)),
+    () =>
+      [...transactions].sort((a, b) => {
+        const ka =
+          a.createdAt || new Date(`${a.date}T00:00:00`).getTime();
+        const kb =
+          b.createdAt || new Date(`${b.date}T00:00:00`).getTime();
+        return kb - ka || b.date.localeCompare(a.date);
+      }),
     [transactions]
   );
 
@@ -184,13 +192,20 @@ export default function TransactionList({ transactions }: { transactions: Transa
         )}
       </div>
 
-      {/* Initial Wallet Setup Card */}
+      {/* Other Transactions */}
+      <div className="flex flex-col">
+        {visibleTx.map((tx, i) => (
+          <TransactionRow key={tx.id} tx={tx} delay={0.22 + i * 0.05} onOpen={() => setEditingTx(tx)} />
+        ))}
+      </div>
+
+      {/* Initial Wallet Setup Card — always below every transaction */}
       {hasSetupTx && setupTx && (
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1, ease: [0.2, 0.8, 0.2, 1] }}
-          className="mb-3 p-4 bg-gradient-to-r from-[#5CB010]/10 via-[#2E680A]/10 to-transparent border border-[#5CB010]/20 rounded-[20px]"
+          className="mt-3 mb-3 p-4 bg-gradient-to-r from-[#5CB010]/10 via-[#2E680A]/10 to-transparent border border-[#5CB010]/20 rounded-[20px]"
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#5CB010]/20 flex items-center justify-center">
@@ -210,13 +225,6 @@ export default function TransactionList({ transactions }: { transactions: Transa
           </div>
         </motion.div>
       )}
-
-      {/* Other Transactions */}
-      <div className="flex flex-col">
-        {visibleTx.map((tx, i) => (
-          <TransactionRow key={tx.id} tx={tx} delay={0.22 + i * 0.05} onOpen={() => setEditingTx(tx)} />
-        ))}
-      </div>
 
       {/* Edit / Delete sheet */}
       <AnimatePresence>

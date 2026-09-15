@@ -39,8 +39,19 @@ interface EditTransactionProps {
   onClose: () => void;
 }
 
+// Net effect a transaction had on the balances: which bucket it touched and by
+// how much (+credit / -debit). Transfers store their *destination* bucket, so
+// the money actually left the opposite one.
+function txEffect(t: Transaction): { bucket: BucketType; delta: number } {
+  if (t.type === "expense") return { bucket: t.bucket, delta: -t.amount };
+  if (t.type === "income_salary" || t.type === "income_topup") {
+    return { bucket: t.bucket, delta: t.amount };
+  }
+  return { bucket: t.bucket === "liquid" ? "account" : "liquid", delta: -t.amount };
+}
+
 export default function EditTransaction({ tx, onClose }: EditTransactionProps) {
-  const { updateTransaction, deleteTransaction, currency } = useStore();
+  const { updateTransaction, deleteTransaction, currency, balances, transactions } = useStore();
   const cur = getCurrencyInfo(currency);
 
   const isTransfer = tx.type === "transfer";
@@ -58,6 +69,8 @@ export default function EditTransaction({ tx, onClose }: EditTransactionProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // Stable fallback for transactions without a createdAt timestamp.
+  const [fallbackCreatedAt] = useState(() => Date.now());
 
   const formatNumber = (val: string) => {
     const num = val.replace(/[^0-9]/g, "");
@@ -115,6 +128,41 @@ export default function EditTransaction({ tx, onClose }: EditTransactionProps) {
   const canSubmit = !saving && !!amount && !!date;
   const fromBucket: BucketType = bucket === "liquid" ? "account" : "liquid";
 
+  // ── Live balance summary (before → this entry → after) ─────
+  // Reconstructs the REAL bucket balance at this transaction's date by walking
+  // back from the current balances and reversing every transaction that is
+  // chronologically newer than the edited transaction (with its edited date).
+  const isIncome = txType === "income";
+  const newAmount = parseFloat(amount.replace(/,/g, "")) || 0;
+  const summaryBucket: BucketType = isTransfer ? fromBucket : bucket;
+  const replCreatedAt = tx.createdAt ?? fallbackCreatedAt;
+
+  let liqGuess = balances?.liquidAmount ?? 0;
+  let accGuess = balances?.accountAmount ?? 0;
+  const others = transactions.filter((t) => t.id !== tx.id);
+  const newerThanRepl = (t: Transaction) =>
+    t.date > date ||
+    (t.date === date && (t.createdAt ?? 0) > replCreatedAt);
+  for (const t of [...others].sort((a, b) =>
+    b.date === a.date
+      ? (b.createdAt ?? 0) - (a.createdAt ?? 0)
+      : b.date.localeCompare(a.date)
+  )) {
+    if (!newerThanRepl(t)) break;
+    const eff = txEffect(t);
+    if (eff.bucket === "liquid") liqGuess -= eff.delta;
+    else accGuess -= eff.delta;
+  }
+
+  const afterBalAtRepl = { liquid: liqGuess, account: accGuess };
+  const originalEff = txEffect(tx);
+  const beforeSummary =
+    afterBalAtRepl[summaryBucket] -
+    (summaryBucket === originalEff.bucket ? originalEff.delta : 0);
+  const signedNew = (isIncome ? 1 : -1) * newAmount;
+  const afterSummary = beforeSummary + signedNew;
+  const summarySign = signedNew >= 0 ? "+" : "−";
+
   return (
     <AnimatePresence>
       <motion.div
@@ -154,6 +202,47 @@ export default function EditTransaction({ tx, onClose }: EditTransactionProps) {
               <X size={17} />
             </button>
           </div>
+
+          {/* ── Live balance summary card ───────────────────── */}
+          {balances && (
+            <div className="mb-4 rounded-2xl border border-[#5CB010]/20 bg-gradient-to-r from-[#5CB010]/10 via-transparent to-transparent overflow-hidden">
+              <div className="flex items-center justify-between px-4 pt-3">
+                <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-textDim/60">
+                  {summaryBucket === "liquid" ? <Wallet size={13} /> : <CreditCard size={13} />}
+                  {summaryBucket === "liquid" ? "In Hand" : "Account"} balance
+                </div>
+                {isTransfer && (
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-textDim/50">
+                    Money moved out
+                  </span>
+                )}
+              </div>
+              <div className="flex items-end justify-between px-4 pb-4 pt-2">
+                <div>
+                  <div className="text-[10.5px] text-textDim/60 mb-0.5">Before</div>
+                  <div className="font-display font-bold text-[17px] text-text tracking-tight">
+                    {cur.symbol}{Math.max(0, beforeSummary).toLocaleString(cur.locale)}
+                  </div>
+                </div>
+                <div className="text-center px-2">
+                  <div className="text-[10.5px] text-textDim/60 mb-0.5">This entry</div>
+                  <div
+                    className={`font-display font-bold text-[17px] tracking-tight ${
+                      isIncome ? "text-[#5CB010]" : "text-coral"
+                    }`}
+                  >
+                    {summarySign}{cur.symbol}{newAmount.toLocaleString(cur.locale)}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10.5px] text-textDim/60 mb-0.5">After</div>
+                  <div className="font-display font-bold text-[22px] text-[#5CB010] leading-none tracking-tight">
+                    {cur.symbol}{Math.max(0, afterSummary).toLocaleString(cur.locale)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Type selector (not for transfers) */}
           {!isTransfer && (

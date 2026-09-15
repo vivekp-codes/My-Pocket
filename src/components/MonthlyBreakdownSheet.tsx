@@ -5,9 +5,7 @@ import {
   ChartPieSlice,
   TrendDown,
   TrendUp,
-  Receipt,
   Briefcase,
-  PlusCircle,
   Fire,
   CaretRight,
   Airplane,
@@ -119,10 +117,6 @@ export default function MonthlyBreakdownSheet({
   );
 
   const totalCredited = monthIncomes.reduce((s, tx) => s + tx.amount, 0);
-  const salaryTotal = monthIncomes
-    .filter((tx) => tx.type === "income_salary")
-    .reduce((s, tx) => s + tx.amount, 0);
-  const salaryPct = (salaryTotal / (totalCredited || 1)) * 100;
 
   const highestMeta =
     (highestExpense?.category && CATEGORY_META[highestExpense.category]) || null;
@@ -424,107 +418,6 @@ export default function MonthlyBreakdownSheet({
                     </div>
                   </motion.div>
                 )}
-
-                {/* ── Credit details ─────────────────────────── */}
-                <motion.div
-                  initial={{ opacity: 0, y: 24 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, margin: "-40px" }}
-                  transition={{ duration: 0.45, ease: "easeOut" }}
-                  className="mb-2"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Receipt size={13} weight="bold" className="text-[#5CB010]" />
-                      <span className="text-[10px] font-bold text-textDim/40 uppercase tracking-wider">
-                        Credit Details
-                      </span>
-                    </div>
-                    <span className="text-[9px] font-semibold text-[#5CB010]/60 uppercase tracking-wider">
-                      Credit
-                    </span>
-                  </div>
-
-                  {monthIncomes.length > 0 ? (
-                    <>
-                      {/* Income composition bar */}
-                      <div className="mb-3">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[9px] font-semibold text-textDim/50">
-                            Salary {fmt(salaryTotal)}
-                          </span>
-                          <span className="text-[9px] font-semibold text-textDim/50">
-                            Top-up {fmt(totalCredited - salaryTotal)}
-                          </span>
-                        </div>
-                        <div className="flex h-[7px] rounded-full overflow-hidden bg-surface">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${salaryPct}%` }}
-                            transition={{ duration: 0.5 }}
-                            className="h-full bg-gradient-to-r from-[#3f8f10] to-[#5CB010]"
-                          />
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${100 - salaryPct}%` }}
-                            transition={{ duration: 0.5, delay: 0.1 }}
-                            className="h-full bg-[#73DA14]/50"
-                          />
-                        </div>
-                        <div className="flex items-center gap-4 mt-1.5">
-                          <span className="flex items-center gap-1 text-[8.5px] font-semibold text-textDim/40">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#5CB010]" /> Salary
-                          </span>
-                          <span className="flex items-center gap-1 text-[8.5px] font-semibold text-textDim/40">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#73DA14]/60" /> Top-up
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Income list — square cards, 4 per row */}
-                      <div className="grid grid-cols-4 gap-2">
-                        {monthIncomes.map((tx, i) => {
-                          const isSalary = tx.type === "income_salary";
-                          return (
-                            <motion.div
-                              key={tx.id}
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ delay: i * 0.04, type: "spring", stiffness: 260, damping: 20 }}
-                              className="relative aspect-square flex flex-col items-center justify-center gap-1 px-1 py-2 bg-[#5CB010]/5 border border-[#5CB010]/12 rounded-[14px] overflow-hidden"
-                            >
-                              <div className="w-8 h-8 rounded-[10px] bg-[#5CB010]/12 flex items-center justify-center shrink-0 mt-1">
-                                {isSalary ? (
-                                  <Briefcase size={14} weight="bold" className="text-[#5CB010]" />
-                                ) : (
-                                  <PlusCircle size={14} weight="bold" className="text-[#5CB010]" />
-                                )}
-                              </div>
-                              <div className="w-full min-w-0 text-center leading-tight">
-                                <div className="text-[9px] font-bold text-text truncate px-0.5">{tx.name}</div>
-                                <div className="text-[8px] text-textDim/50 truncate">{fmtDay(tx.date)}</div>
-                              </div>
-                              <div className="flex flex-col items-center leading-none">
-                                <div className="text-[10px] font-display font-bold text-[#5CB010] truncate">
-                                  +{fmt(tx.amount)}
-                                </div>
-                                <div className="text-[6.5px] font-bold text-[#5CB010]/50 uppercase tracking-wider mt-0.5">
-                                  {isSalary ? "Salary" : "Top-up"}
-                                </div>
-                              </div>
-                              {/* corner accent */}
-                              <div className="absolute top-0 right-0 w-5 h-5 rounded-bl-[14px] bg-gradient-to-bl from-[#5CB010]/20 to-transparent" />
-                            </motion.div>
-                          );
-                        })}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-[11px] text-textDim/40 py-4 text-center bg-cardBg border border-stroke rounded-2xl">
-                      No income this month
-                    </div>
-                  )}
-                </motion.div>
 
                 <div className="flex items-center justify-center gap-1 mt-3 text-[9.5px] text-textDim/35">
                   <span>Breakdown of {monthLabel}</span>

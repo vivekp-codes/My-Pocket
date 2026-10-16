@@ -170,13 +170,8 @@ export default function TransactionList({ transactions }: { transactions: Transa
     [transactions]
   );
 
-  // Check if there's a wallet setup transaction
-  const hasSetupTx = sorted.some((tx) => tx.name === "Wallet Setup Completed");
-  const setupTx = sorted.find((tx) => tx.name === "Wallet Setup Completed");
-  const otherTx = sorted.filter((tx) => tx.name !== "Wallet Setup Completed");
-
-  const visibleTx = showAll ? otherTx : otherTx.slice(0, INITIAL_LIMIT);
-  const hasMore = otherTx.length > INITIAL_LIMIT;
+  const visibleTx = showAll ? sorted : sorted.slice(0, INITIAL_LIMIT);
+  const hasMore = sorted.length > INITIAL_LIMIT;
 
   return (
     <div className="px-5 pt-6">
@@ -187,44 +182,16 @@ export default function TransactionList({ transactions }: { transactions: Transa
             onClick={() => setShowAll(!showAll)}
             className="text-xs font-semibold text-[#5CB010] hover:underline cursor-pointer"
           >
-            {showAll ? "Show less" : `See all (${otherTx.length})`}
+            {showAll ? "Show less" : `See all (${sorted.length})`}
           </button>
         )}
       </div>
 
-      {/* Other Transactions */}
       <div className="flex flex-col">
         {visibleTx.map((tx, i) => (
           <TransactionRow key={tx.id} tx={tx} delay={0.22 + i * 0.05} onOpen={() => setEditingTx(tx)} />
         ))}
       </div>
-
-      {/* Initial Wallet Setup Card — always below every transaction */}
-      {hasSetupTx && setupTx && (
-        <motion.div
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1, ease: [0.2, 0.8, 0.2, 1] }}
-          className="mt-3 mb-3 p-4 bg-gradient-to-r from-[#5CB010]/10 via-[#2E680A]/10 to-transparent border border-[#5CB010]/20 rounded-[20px]"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#5CB010]/20 flex items-center justify-center">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#5CB010" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 12V7H5a2 2 0 010-4h14v4" />
-                <path d="M3 5v14a2 2 0 002 2h16v-5" />
-                <path d="M18 12a2 2 0 000 4h4v-4h-4z" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <p className="text-[13px] font-semibold text-text">Wallet Setup Completed</p>
-              <p className="text-[11px] text-textDim/50">Initial balance added</p>
-            </div>
-            <p className="font-display font-bold text-[15px] text-[#5CB010]">
-              +{cur.symbol}{setupTx.amount.toLocaleString(cur.locale)}
-            </p>
-          </div>
-        </motion.div>
-      )}
 
       {/* Edit / Delete sheet */}
       <AnimatePresence>

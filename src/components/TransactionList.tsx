@@ -151,8 +151,6 @@ function TransactionRow({ tx, delay, onOpen }: { tx: Transaction; delay: number;
 const INITIAL_LIMIT = 10;
 
 export default function TransactionList({ transactions }: { transactions: Transaction[] }) {
-  const { currency } = useStore();
-  const cur = getCurrencyInfo(currency);
   const [showAll, setShowAll] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
 
